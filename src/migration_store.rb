@@ -7,7 +7,7 @@ class MigrationStore
   attr_reader :agent_groups
 
   def initialize(basedir)
-    @stored_agents_by_sort_name = {}
+    # @stored_agents_by_sort_name = {}
 
     @stores = {
       :location => MarshalStore.new(File.join(basedir, "locations")),
@@ -15,16 +15,16 @@ class MigrationStore
       :accession =>  MarshalStore.new(File.join(basedir, "accessions")),
       :archival_object =>  MarshalStore.new(File.join(basedir, "archival_objects")),
       :event =>  MarshalStore.new(File.join(basedir, "events")),
-      :agent_person_contact => MarshalStore.new(File.join(basedir, "agent_people_contact")),
-      :agent_person_creator => MarshalStore.new(File.join(basedir, "agent_creator_people")),
-      :agent_person_acknowledger => MarshalStore.new(File.join(basedir, "agent_acknowledger_people")),
-      :agent_corporate_entity_acknowledger => MarshalStore.new(File.join(basedir, "agent_acknowledger_corporate_entity")),
-      :agent_corporate_entity_contact => MarshalStore.new(File.join(basedir, "agent_corporate_entities_contact")),
-      :agent_corporate_entity_creator => MarshalStore.new(File.join(basedir, "agent_corporate_entities_creator")),
-      :agent_family => MarshalStore.new(File.join(basedir, "agent_families"))
+      :agent_person_record_context => MarshalStore.new(File.join(basedir, "agent_person")),
+      # :agent_person_creator => MarshalStore.new(File.join(basedir, "agent_creator_people")),
+      # :agent_person_acknowledger => MarshalStore.new(File.join(basedir, "agent_acknowledger_people")),
+      :agent_corporate_entity_record_context => MarshalStore.new(File.join(basedir, "agent_corporate_entity")),
+      # :agent_corporate_entity_contact => MarshalStore.new(File.join(basedir, "agent_corporate_entities_contact")),
+      # :agent_corporate_entity_creator => MarshalStore.new(File.join(basedir, "agent_corporate_entities_creator")),
+      :agent_family_record_context => MarshalStore.new(File.join(basedir, "agent_family"))
     }
 
-    @agent_groups = AgentGroup.new(self)
+    # @agent_groups = AgentGroup.new(self)
 
     @promise_store = PromiseStore.new(File.join(basedir, "promises.db"))
   end
@@ -51,45 +51,45 @@ class MigrationStore
   end
 
 
-  def maybe_group_agent(record, role)
-    if @agent_groups.known_duplicate?(record, role)
-      if @agent_groups.needs_merge?(record, role)
-        merged_uri = @agent_groups.merge_agent(record, role)
-        deliver_promise("#{role}_uri", record['id'], merged_uri)
-        deliver_promise('contact_relator', record['id'], map_relator(record['_contact_type'])) if role == 'contact'
+  # def maybe_group_agent(record, role)
+  #   if @agent_groups.known_duplicate?(record, role)
+  #     if @agent_groups.needs_merge?(record, role)
+  #       merged_uri = @agent_groups.merge_agent(record, role)
+  #       deliver_promise("#{role}_uri", record['id'], merged_uri)
+  #       deliver_promise('contact_relator', record['id'], map_relator(record['_contact_type'])) if role == 'contact'
+  # 
+  #       return true
+  #     else
+  #       # Set the ID of this object to our group identifier so we can find it
+  #       # for subsequent merges.
+  #       record['id'] = @agent_groups.group_identifier(record, role)
+  # 
+  #       return false
+  #     end
+  #   else
+  #     # Show a warning if this might be a duplicate (based on name) but hasn't
+  #     # been marked as such.
+  #     if (matching_agent = @agent_groups.find_matching_agent(record))
+  #       sort_name = record['names'][0].fetch('sort_name')
+  # 
+  #       Log.warn("Agent '#{sort_name}' with role #{role} - ID '#{record['id']}' " +
+  #                "has the same name as agent with role " +
+  #                "'#{matching_agent['_agent_role']}' - ID '#{matching_agent['id']}'")
+  #     end
+  #   end
+  # 
+  #   return false
+  # end
 
-        return true
-      else
-        # Set the ID of this object to our group identifier so we can find it
-        # for subsequent merges.
-        record['id'] = @agent_groups.group_identifier(record, role)
-
-        return false
-      end
-    else
-      # Show a warning if this might be a duplicate (based on name) but hasn't
-      # been marked as such.
-      if (matching_agent = @agent_groups.find_matching_agent(record))
-        sort_name = record['names'][0].fetch('sort_name')
-
-        Log.warn("Agent '#{sort_name}' with role #{role} - ID '#{record['id']}' " +
-                 "has the same name as agent with role " +
-                 "'#{matching_agent['_agent_role']}' - ID '#{matching_agent['id']}'")
-      end
-    end
-
-    return false
-  end
-
-  def put_agent_person(record, role)
+  def put_agent_person(record, role = 'record_context')
     # Stash and use this because the merge process may replace the record ID
     # with the agent group's ID
     original_id = record['id']
 
-    grouped = maybe_group_agent(record, role)
+    # grouped = maybe_group_agent(record, role)
 
     # Handled by merge!
-    return true if grouped
+    # return true if grouped
 
     uri = "/agents/people/import_#{SecureRandom.hex}"
 
@@ -98,37 +98,37 @@ class MigrationStore
 
     if put(:"agent_person_#{role}", record)
       store = @stores.fetch(:"agent_person_#{role}")
-      @agent_groups.record_agent(record, store)
+      # @agent_groups.record_agent(record, store)
 
       deliver_promise("#{role}_uri", original_id, uri)
-      deliver_promise('contact_relator', original_id, map_relator(record['_contact_type'])) if role == 'contact'
+      # deliver_promise('contact_relator', original_id, map_relator(record['_contact_type'])) if role == 'contact'
 
       true
     end
   end
 
 
-  def put_agent_corporate_entity(record, role)
+  def put_agent_corporate_entity(record, role = 'record_context')
     # Stash and use this because the merge process may replace the record ID
     # with the agent group's ID
     original_id = record['id']
 
-    grouped = maybe_group_agent(record, role)
-
-    # Handled by merge!
-    return true if grouped
+    # grouped = maybe_group_agent(record, role)
+    #
+    # # Handled by merge!
+    # return true if grouped
 
     uri = "/agents/corporate_entities/import_#{SecureRandom.hex}"
     record['uri'] = uri
     record['_agent_role'] = role
 
     store = @stores.fetch(:"agent_corporate_entity_#{role}")
-    @agent_groups.record_agent(record, store)
+    # @agent_groups.record_agent(record, store)
 
 
     if put(:"agent_corporate_entity_#{role}", record)
       deliver_promise("#{role}_uri", original_id, uri)
-      deliver_promise('contact_relator', original_id, map_relator(record['_contact_type'])) if role == 'contact'
+      # deliver_promise('contact_relator', original_id, map_relator(record['_contact_type'])) if role == 'contact'
 
       true
     end
@@ -136,25 +136,24 @@ class MigrationStore
   end
 
 
-  # Slightly different to the others because families don't act as contacts.
-  def put_agent_family(record)
+  def put_agent_family(record, role = 'record_context')
     # Stash and use this because the merge process may replace the record ID
     # with the agent group's ID
     original_id = record['id']
 
-    grouped = maybe_group_agent(record, nil)
-
-    # Handled by merge!
-    return true if grouped
+    # grouped = maybe_group_agent(record, nil)
+    # 
+    # # Handled by merge!
+    # return true if grouped
 
     uri = "/agents/families/import_#{SecureRandom.hex}"
     record['uri'] = uri
     record['_agent_role'] = nil
 
-    if put(:agent_family, record)
-      store = @stores.fetch(:"agent_family")
-      @agent_groups.record_agent(record, store)
-      deliver_promise('creator_uri', original_id, uri)
+    if put(:"agent_family_#{role}", record)
+      store = @stores.fetch(:"agent_family_#{role}")
+      # @agent_groups.record_agent(record, store)
+      deliver_promise("#{role}_uri", original_id, uri)
     end
   end
 
