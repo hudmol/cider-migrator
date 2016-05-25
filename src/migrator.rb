@@ -81,6 +81,10 @@ class Migrator
         ResourceConverter.new(@cider_db).call(store)
       end
 
+      chatty("Extracting Digital Object records from CIDER Digital Objects", store, tree_store) do
+        DigitalObjectConverter.new(@cider_db).call(store)
+      end
+
       store.all_records(:resolve_promises_opts => {:discard_failed_promises => false}) do |record|
         @out.puts record.to_json
       end
