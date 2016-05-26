@@ -77,6 +77,10 @@ class Migrator
         AgentConverter.new(@cider_db).call(store)
       end
 
+      chatty("Extracting Resource records from CIDER Collections", store, tree_store) do
+        ResourceConverter.new(@cider_db).call(store)
+      end
+
       store.all_records(:resolve_promises_opts => {:discard_failed_promises => false}) do |record|
         @out.puts record.to_json
       end
