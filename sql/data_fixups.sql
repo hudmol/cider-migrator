@@ -13,3 +13,8 @@
 -- 18 of these in cider_20160524
 -- 2 remain in cider_20160525
 delete from record_context_relationship where record_context = related_entity;
+
+-- 538 collections don't have a date in cider_20160525
+-- resources need a date. what to do?
+select count(obj.number) from collection col, object obj where col.id = obj.id and col.bulk_date_from is NULL and col.bulk_date_to is NULL;
+
