@@ -18,3 +18,6 @@ delete from record_context_relationship where record_context = related_entity;
 -- resources need a date. what to do?
 select count(obj.number) from collection col, object obj where col.id = obj.id and col.bulk_date_from is NULL and col.bulk_date_to is NULL;
 
+-- seven collections don't have any locations in cider_20160525
+-- resources must have at least one extent, what to do?
+select obj.number, col.id from collection col, object obj where col.id = obj.id and col.id not in (select object from object_location);
