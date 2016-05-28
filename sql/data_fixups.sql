@@ -12,17 +12,20 @@
 
 -- 18 of these in cider_20160524
 -- 2 remain in cider_20160525
-delete from record_context_relationship where record_context = related_entity;
+-- fixed in cider_20160527
+-- select count(*) from record_context_relationship where record_context = related_entity;
+-- delete from record_context_relationship where record_context = related_entity;
 
--- 538 collections don't have a date in cider_20160525
+-- 538 collections don't have a date in cider_20160527
 -- resources need a date. what to do?
 select count(obj.number) from collection col, object obj where col.id = obj.id and col.bulk_date_from is NULL and col.bulk_date_to is NULL;
+update collection set bulk_date_from = '1970' where bulk_date_from is NULL and bulk_date_to is NULL;
 
--- seven collections don't have any locations in cider_20160525
+-- seven collections don't have any locations in cider_20160527
 -- resources must have at least one extent, what to do?
 select obj.number, col.id from collection col, object obj where col.id = obj.id and col.id not in (select object from object_location);
 
--- starting to look at building trees under resources in cider_20160525
+-- starting to look at building trees under resources in cider_20160527
 -- found two objects that don't have a parent and aren't linked to a collection
 select * from object where parent is null and id not in (select id from collection);
 -- looking at objects with similar numbers

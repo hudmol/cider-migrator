@@ -69,8 +69,8 @@ class ResourceConverter < Converter
 
       case dates.length
       when 0
-        # bogus placeholder so we can validate
-        [Dates.single('1970').merge('label' => 'creation')]
+        # this will fail validation - resources must have a date
+        []
       when 1
         [Dates.single(dates[0]).merge('label' => 'creation')]
       else
