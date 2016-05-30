@@ -1,5 +1,15 @@
 class Dates
 
+  def self.single(date)
+    {
+      'jsonmodel_type' => 'date',
+      'date_type' => 'single',
+      'begin' => Utils.trim(date),
+      'expression' => date,
+    }
+  end
+
+
   def self.range(start_date, end_date)
     dates = [start_date, end_date].map {|s| Utils.trim(s) }.compact
 
