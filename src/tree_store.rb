@@ -10,11 +10,10 @@ class TreeStore
   def record_parent(opts)
     raise "Already have a value!" if @child_to_parent[opts.fetch(:child)]
 
-    parent = opts.fetch(:collection) { opts.fetch(:parent) }
-    @child_to_parent[opts.fetch(:child)] = parent
-
     if opts.has_key?(:collection)
       @collections << opts.fetch(:collection)
+    else
+      @child_to_parent[opts.fetch(:child)] = opts.fetch(:parent)
     end
   end
 

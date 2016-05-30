@@ -31,11 +31,6 @@ class ResourceConverter < Converter
   # +----+------------+---------------------------------------------------------------------------------------------------+
 
   # FIXME:
-  # collections don't seem to have any extent info - resources require an extent
-  # mapping says extents are derived
-  # need to look at the cider code for this
-
-  # FIXME:
   # a bunch of collections don't have bulk_date_from or bulk_date_to
   # but resources require at least one date
 
@@ -184,6 +179,16 @@ class ResourceConverter < Converter
       # if there is only 1 extent then it must be for the whole, no?
       if extents.length == 1
         extents[0]['portion'] = 'whole'
+      end
+
+      # temporary fix for the 7 that don't have an extent
+      if extents.length == 0
+        extents << {
+          'jsonmodel_type' => 'extent',
+          'portion' => 'whole',
+          'number' => '1',
+          'extent_type' => 'volumes',
+        }
       end
 
       extents

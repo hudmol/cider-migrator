@@ -85,10 +85,13 @@ class Migrator
         ResourceConverter.new(@cider_db).call(store)
       end
 
+      chatty("Extracting ArchivalObject records from CIDER Objects", store, tree_store) do
+        ArchivalObjectConverter.new(@cider_db).call(store, tree_store)
+      end
+
       chatty("Extracting Digital Object records from CIDER Digital Objects", store, tree_store) do
         DigitalObjectConverter.new(@cider_db).call(store)
       end
-
 
       chatty("Resolving all parent/child relationships", store, tree_store) do
         # Parent/child & collection relationships
