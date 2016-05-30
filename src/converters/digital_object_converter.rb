@@ -41,7 +41,7 @@ class DigitalObjectConverter < Converter
      end
 
      Log.warn("This digital object doesn't have an Item Number (digital_object_id): #{digital_object.inspect}")
-     return "FAKE_DIGITAL_OBJECT_ID"
+     return "FAKE_DIGITAL_OBJECT_ID_#{object[:id]}"
   end
 
   def extract_digital_object_type(object, item, digital_object, db)
