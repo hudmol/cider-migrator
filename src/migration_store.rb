@@ -14,6 +14,7 @@ class MigrationStore
       :resource =>  MarshalStore.new(File.join(basedir, "resources")),
       :accession =>  MarshalStore.new(File.join(basedir, "accessions")),
       :archival_object =>  MarshalStore.new(File.join(basedir, "archival_objects")),
+      :digital_object =>  MarshalStore.new(File.join(basedir, "digital_objects")),
       :event =>  MarshalStore.new(File.join(basedir, "events")),
       :agent_person_record_context => MarshalStore.new(File.join(basedir, "agent_person")),
       # :agent_person_creator => MarshalStore.new(File.join(basedir, "agent_creator_people")),
@@ -188,6 +189,16 @@ class MigrationStore
       deliver_promise('accession_uri_by_acc_no', record['_acc_no'], uri)
     end
 
+  end
+
+
+  def put_digital_object(record)
+    uri = "/repositories/#{repo_id}/digital_objects/import_#{SecureRandom.hex}"
+    record['uri'] = uri
+
+    if deliver_promise('digital_object_uri', record['id'], uri)
+      put(:digital_object, record)
+    end
   end
 
 
