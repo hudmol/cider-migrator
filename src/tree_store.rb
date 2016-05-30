@@ -97,9 +97,7 @@ class TreeStore
 
 
   def record_collection_for_children(children, collection_node, collection_cache)
-    # Drop the 'collection_' prefix
-    resource_id = collection_node.split(/_/)[1]
-    collection_uri = @store.uri_for(:resource, resource_id)
+    collection_uri = @store.uri_for(:resource, collection_node)
 
     children.each do |child_node|
       @store.deliver_promise('collection_uri', child_node, collection_uri)
