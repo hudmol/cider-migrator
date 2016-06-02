@@ -73,12 +73,12 @@ class Migrator
       store = MigrationStore.new(store_dir)
       tree_store = TreeStore.new(store)
 
-      chatty("Extracting Archival Object records from CIDER series and items", store, tree_store) do
-        ArchivalObjectConverter.new(@cider_db).call(store, tree_store)
-      end
-
       chatty("Extracting Agent records from CIDER RCRs", store, tree_store) do
         AgentConverter.new(@cider_db).call(store)
+      end
+
+      chatty("Extracting Subject records from various CIDER tables", store, tree_store) do
+        SubjectConverter.new(@cider_db).call(store)
       end
 
       chatty("Extracting Resource records from CIDER Collections", store, tree_store) do
