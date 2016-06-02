@@ -20,9 +20,17 @@ class SubjectConverter < Converter
     private
 
     TERM_TYPE = {
+      :collection_subject => 'uniform_title',
       :authority_name => 'uniform_title',
       :geographic_term => 'geographic',
       :topic_term => 'topical'
+    }
+
+    TERM_FIELD = {
+      :collection_subject => :subject,
+      :authority_name => :name,
+      :geographic_term => :name,
+      :topic_term => :name
     }
 
     def build_terms(subjecty_thing, type)
@@ -30,7 +38,7 @@ class SubjectConverter < Converter
 
       terms << {
         'jsonmodel_type' => 'term',
-        'term' => subjecty_thing[:name],
+        'term' => subjecty_thing[TERM_FIELD[type]],
         'term_type' => TERM_TYPE[type],
         'vocabulary' => Migrator.promise('vocabulary_uri', 'tufts'),
       }
@@ -56,7 +64,7 @@ class SubjectConverter < Converter
     Log.info("Creating Vocabulary record out of thin air")
     Vocabulary.new.from_thin_air(store)
 
-    [:authority_name, :geographic_term, :topic_term].each do |type|
+    [:collection_subject, :authority_name, :geographic_term, :topic_term].each do |type|
       Log.info("Going to process #{db[type].count} #{type.to_s} records")
       db[type].each do |row|
         Subject.new.from_subjecty_thing(row, type, db, store)

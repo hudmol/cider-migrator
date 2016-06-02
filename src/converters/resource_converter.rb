@@ -52,6 +52,7 @@ class ResourceConverter < Converter
         'ead_location' => collection[:permanent_url],
         'extents' => build_extents(obj, db),
         'notes' => build_notes(collection),
+        'subjects' => build_subjects(collection, db),
       }
 
       store.put_resource(resource_json)
@@ -232,6 +233,16 @@ class ResourceConverter < Converter
       end
 
       notes
+    end
+
+    def build_subjects(collection, db)
+      subjects = []
+
+      db[:collection_subject].where(:collection => collection[:id]).each do |row|
+        subjects << { 'ref' => Migrator.promise('subject_uri', "collection_subject:#{row[:id]}") }
+      end
+
+      subjects
     end
 
   end
