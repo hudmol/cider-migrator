@@ -47,7 +47,7 @@ class ResourceConverter < Converter
         'level' => 'collection',
         'resource_type' => 'collection',
         'language' => 'eng',
-        'dates' => build_dates(collection),
+        'dates' => build_dates(collection, obj[:number], db),
         'ead_id' => obj[:number],
         'ead_location' => collection[:permanent_url],
         'extents' => build_extents(obj, db),
@@ -60,13 +60,27 @@ class ResourceConverter < Converter
 
     private
 
-    def build_dates(collection)
+    def build_dates(collection, number, db)
       dates = [collection[:bulk_date_from], collection[:bulk_date_to]].map {|s| Utils.trim(s)}.compact
 
       case dates.length
       when 0
-        # this will fail validation - resources must have a date
-        []
+        # dates are sometimes derived. see:
+        # lib/CIDER/Schema/Result/ObjectWithDerivedFields
+        # looks like it might be possible to avoid a tree walk with something like this:
+        # select min(i.item_date_from), max(i.item_date_to) from object o, item i where o.id = i.id and o.number like 'UA009%';
+        dates_query = "select min(i.item_date_from) as date_from, max(i.item_date_to) as date_to " +
+          "from object o, item i where o.id = i.id and o.number like '#{number}%'"
+        result = db.fetch(dates_query).first
+        if result[:date_from] && result[:date_to]
+          [Dates.range(result[:date_from], result[:date_to]).merge('label' => 'creation')]
+        elsif result[:date_from] || result[:date_to]
+          date = result[:date_from] || result[:date_to]
+          [Dates.single(date).merge('label' => 'creation')]
+        else
+          # this will fail validation - resources must have a date
+          []
+        end
       when 1
         [Dates.single(dates[0]).merge('label' => 'creation')]
       else
