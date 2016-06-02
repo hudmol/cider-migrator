@@ -238,7 +238,9 @@ class MigrationStore
     uri = "/subjects/import_#{SecureRandom.hex}"
     record['uri'] = uri
 
-    put(:subject, record)
+    if deliver_promise('subject_uri', record['id'], uri)
+      put(:subject, record)
+    end
   end
 
 

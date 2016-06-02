@@ -1,53 +1,3 @@
-#
-# well, this is good to know:
-#
-### all objects have a corresponding collection, series or item
-#
-# select count(*) from object
-# where id not in (select id from collection)
-#   and id not in (select id from series)
-#   and id not in (select id from item);
-# +----------+
-# | count(*) |
-# +----------+
-# |        0 |
-# +----------+
-#
-### collections always attach to objects without parents
-#
-# select count(*) from collection c, object o where c.id = o.id and o.parent is not null;
-# +----------+
-# | count(*) |
-# +----------+
-# |        0 |
-# +----------+
-#
-### items can have children
-#
-# select count(*) from object o, item i, object c where o.id = i.id and c.parent = o.id;
-# +----------+
-# | count(*) |
-# +----------+
-# |   183003 |
-# +----------+
-#
-#
-# these tables are linkers between items, locations and formats
-# they are named in format.class
-# there will need to be some sort of mapping to instance_type
-# and probably other fields
-#
-#  count   table
-#   2822   container
-#  23660   bound_volume
-#   1112   three_dimensional_object
-#   8227   audio_visual_media
-# 113385   document
-#  29186   physical_image
-#  68220   digital_object
-#      0   browsing_object
-
-
 class ArchivalObjectConverter < Converter
 
   class ArchivalObject
@@ -116,7 +66,26 @@ class ArchivalObjectConverter < Converter
 
   class Item < ArchivalObject
     def from_object(object, db, store, tree_store)
-      store.put_archival_object(super.merge({'level' => 'item'}))
+      store.put_archival_object(super.merge({'level' => 'item', 'subjects' => build_subjects(object, db)}))
+    end
+
+    def build_subjects(object, db)
+      # only items have these kinds of subjects
+      subjects = []
+
+      db[:item_authority_name].where(:item => object[:id]).each do |row|
+        subjects << { 'ref' => Migrator.promise('subject_uri', "authority_name:#{row[:name]}") }
+      end
+
+      db[:item_geographic_term].where(:item => object[:id]).each do |row|
+        subjects << { 'ref' => Migrator.promise('subject_uri', "geographic_term:#{row[:term]}") }
+      end
+
+      db[:item_topic_term].where(:item => object[:id]).each do |row|
+        subjects << { 'ref' => Migrator.promise('subject_uri', "topic_term:#{row[:term]}") }
+      end
+
+      subjects
     end
   end
 
@@ -139,3 +108,54 @@ class ArchivalObjectConverter < Converter
     end
   end
 end
+
+#
+# well, this is good to know:
+#
+### all objects have a corresponding collection, series or item
+#
+# select count(*) from object
+# where id not in (select id from collection)
+#   and id not in (select id from series)
+#   and id not in (select id from item);
+# +----------+
+# | count(*) |
+# +----------+
+# |        0 |
+# +----------+
+#
+### collections always attach to objects without parents
+#
+# select count(*) from collection c, object o where c.id = o.id and o.parent is not null;
+# +----------+
+# | count(*) |
+# +----------+
+# |        0 |
+# +----------+
+#
+### items can have children
+#
+# select count(*) from object o, item i, object c where o.id = i.id and c.parent = o.id;
+# +----------+
+# | count(*) |
+# +----------+
+# |   183003 |
+# +----------+
+#
+#
+# these tables are linkers between items, locations and formats
+# they are named in format.class
+# there will need to be some sort of mapping to instance_type
+# and probably other fields
+#
+#  count   table
+#   2822   container
+#  23660   bound_volume
+#   1112   three_dimensional_object
+#   8227   audio_visual_media
+# 113385   document
+#  29186   physical_image
+#  68220   digital_object
+#      0   browsing_object
+
+

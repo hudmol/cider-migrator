@@ -98,8 +98,10 @@ class Migrator
         tree_store.deliver_all_promises!
       end
 
-      store.all_records(:resolve_promises_opts => {:discard_failed_promises => false}) do |record|
-        @out.puts record.to_json
+      chatty("Storing records", store, tree_store) do
+        store.all_records(:resolve_promises_opts => {:discard_failed_promises => false}) do |record|
+          @out.puts record.to_json
+        end
       end
     end
   end
