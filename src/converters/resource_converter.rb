@@ -67,16 +67,12 @@ class ResourceConverter < Converter
       when 0
         # dates are sometimes derived. see:
         # lib/CIDER/Schema/Result/ObjectWithDerivedFields
-        # looks like it might be possible to avoid a tree walk with something like this:
-        # select min(i.item_date_from), max(i.item_date_to) from object o, item i where o.id = i.id and o.number like 'UA009%';
-        dates_query = "select min(i.item_date_from) as date_from, max(i.item_date_to) as date_to " +
+        dates_query = "select min(i.item_date_from) as date_from, max(i.item_date_from) as date_from_to, " +
+          "max(i.item_date_to) as date_to " +
           "from object o, item i where o.id = i.id and o.number like '#{number}%'"
         result = db.fetch(dates_query).first
-        if result[:date_from] && result[:date_to]
-          [Dates.range(result[:date_from], result[:date_to]).merge('label' => 'creation')]
-        elsif result[:date_from] || result[:date_to]
-          date = result[:date_from] || result[:date_to]
-          [Dates.single(date).merge('label' => 'creation')]
+        if result[:date_from]
+          [Dates.range(result[:date_from], (result[:date_to] || result[:date_from_to])).merge('label' => 'creation')]
         else
           # this will fail validation - resources must have a date
           []
