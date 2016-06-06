@@ -1,156 +1,161 @@
 class ArchivalObjectConverter < Converter
 
-  # Tables of interest
-  #
-  #  object (For title + ID)
-  #   collection
-  #    series
-  #     item
-  #
-  # Everything is an object
-  # Series and items are objects
-  # Series are not items (nor vice versa)
-  # There are multiple types of items, and they'll (sometimes?) have their own table to provide additional attributes
-  # Digital objects aren't direct objects (that is, they don't have an entry in 'object').  They connect via an item.
-  #
-  # When we're walking these tables we presumably just want to create one
-  # archival object for any series or item that isn't a digital object or
-  # collection.
-
-  class ArchivalObjectLoader
-
-    def initialize(db, store, tree_store)
-      @db = db
-      @store = store
-      @tree_store = tree_store
-    end
-
-    def load(ao_object)
-      record_tree_for(ao_object)
-
-      ao_subtype = @db[:series].filter(:id => ao_object[:id]).count > 0 ? :series : :item
-
-      # FIXME: Pretty sparse at this point... mainly focusing on getting the tree stuff right here.
-      #
-      # Still need to figure out agents, extents, containers, etc.
-      ao_json = {
-        'id' => ao_object[:number],
-        'title' => ao_object[:title],
-        'component_id' => extract_component(ao_object),
-        'level' => level_for(ao_object),
+  class ArchivalObject
+    def from_object(object, db, store, tree_store)
+      record = {
+        'jsonmodel_type' => 'archival_object',
+        'title' => object[:title],
+        'id' => object[:number],
+        'component_id' => object[:number],
+#        'published' => (collection[:processing_status].to_i >= 3).to_s,
+#        'restrictions' => (collection[:processing_status].to_i == 3),
         'language' => 'eng',
-        'dates' => ao_subtype == :series ? build_series_dates(ao_object) : build_item_dates(ao_object),
+#        'dates' => build_dates(collection),
+        'extents' => build_extents(object, db),
+#        'notes' => build_notes(collection),
       }
 
-      ao_json['resource'] = {'ref' => Migrator.promise('collection_uri', ao_object[:number])}
-      ao_json['parent'] = {'ref' => Migrator.promise('archival_object_uri', @db[:object].filter(:id => ao_object[:parent]).select(:number).first[:number])}
+      parent = db[:object].where(:id => object[:parent]).first
+      parent_id = parent[:number]
 
-      @store.put_archival_object(ao_json)
+      tree_store.record_parent(:child => record['id'], :parent => parent_id)
+
+      unless parent[:parent].nil?
+        record['parent'] = {'ref' => Migrator.promise('archival_object_uri', parent_id)}
+      end
+
+      record['resource'] = {'ref' => Migrator.promise('collection_uri', record['id'])}
+
+      record
     end
 
     private
 
-    def build_series_dates(ao_object)
-      series = @db[:series].filter(:id => ao_object[:id]).first
+    def build_extents(object, db)
+      extents = []
 
-      dates = [series[:bulk_date_from], series[:bulk_date_to]].map {|s| Utils.trim(s)}.compact
-
-      case dates.length
-      when 0
-        # fine for an AO
-        []
-      when 1
-        [Dates.single(dates[0]).merge('label' => 'creation')]
-      else
-        [Dates.range(dates[0], dates[1]).merge('label' => 'creation')]
-      end
-    end
+      extents << {
+         'jsonmodel_type' => 'extent',
+         'portion' => 'whole',
+         'number' => '1',
+         'extent_type' => 'volumes',
+      }
 
 
-    def build_item_dates(ao_object)
-      item = @db[:item].filter(:id => ao_object[:id]).first
-
-      dates = [item[:item_date_from], item[:item_date_to]].map {|s| Utils.trim(s)}.compact
-
-      case dates.length
-      when 0
-        # fine for an AO
-        []
-      when 1
-        [Dates.single(dates[0]).merge('label' => 'creation')]
-      else
-        [Dates.range(dates[0], dates[1]).merge('label' => 'creation')]
-      end
-    end
-
-    # There are "Container" types that we don't really understand yet.  For
-    # example, see MS009-001.
-    def level_for(ao_object)
-      if @db[:series].filter(:id => ao_object[:id]).count > 1
-        'series'
-      else
-        # THINKME: Should 'collection: file folder' be a 'collection' or 'file'?
-        if @db[:file_folder].filter(:item => ao_object[:id]).count > 1
-          'file'
-        elsif @db[:container].filter(:item => ao_object[:id]).count > 1
-          'container'
-        else
-          'item'
-        end
-      end
-    end
-
-    def extract_component(ao_object)
-      ao_object[:number].split('.')[-1] or raise "No object ID extracted"
-    end
-
-    def record_tree_for(ao_object)
-      raise "AO found without parent" unless ao_object[:parent]
-
-      # Is this a top-level archival object?
-      if @db[:collection].filter(:id => ao_object[:parent]).count > 0
-        # top-level archival object
-        @tree_store.record_parent(:child => ao_object[:number], :collection => @db[:object].filter(:id => ao_object[:parent]).select(:number).first[:number])
-      else
-        # item-level
-        @tree_store.record_parent(:child => ao_object[:number], :parent => @db[:object].filter(:id => ao_object[:parent]).select(:number).first[:number])
-      end
+      extents
     end
 
   end
 
+
+  class Collection < ArchivalObject
+    def from_object(object, db, store, tree_store)
+      # we don't need this object because the resource mapper is taking care of it
+      # just remember the collection_id for the tree store
+      tree_store.record_parent(:child => object[:number], :collection => object[:number])
+    end
+  end
+
+
+  class Series < ArchivalObject
+    def from_object(object, db, store, tree_store)
+      store.put_archival_object(super.merge({'level' => 'series'}))
+    end
+  end
+
+
+  class Item < ArchivalObject
+    def from_object(object, db, store, tree_store)
+      store.put_archival_object(super.merge({'level' => 'item', 'subjects' => build_subjects(object, db)}))
+    end
+
+    def build_subjects(object, db)
+      # only items have these kinds of subjects
+      subjects = []
+
+      db[:item_authority_name].where(:item => object[:id]).each do |row|
+        subjects << { 'ref' => Migrator.promise('subject_uri', "authority_name:#{row[:name]}") }
+      end
+
+      db[:item_geographic_term].where(:item => object[:id]).each do |row|
+        subjects << { 'ref' => Migrator.promise('subject_uri', "geographic_term:#{row[:term]}") }
+      end
+
+      db[:item_topic_term].where(:item => object[:id]).each do |row|
+        subjects << { 'ref' => Migrator.promise('subject_uri', "topic_term:#{row[:term]}") }
+      end
+
+      subjects
+    end
+  end
+
+
+  def record_type(object)
+    if object[:parent].nil?
+      Collection.new
+    elsif db[:series].where(:id => object[:id]).count > 0
+      Series.new
+    else
+      Item.new
+    end
+  end
 
   def call(store, tree_store)
-    ao_dataset = build_ao_dataset
+    Log.info("Going to process #{db[:object].count} archival_object records")
 
-    Log.info("Going to process #{ao_dataset.count} archival object records")
-
-    record_count = 0
-    ao_dataset.each do |ao_object|
-      record_count += 1
-      ArchivalObjectLoader.new(db, store, tree_store).load(ao_object)
-
-      $stderr.puts("Processed #{record_count} records") if (record_count % 1000) == 0
+    db[:object].each do |object|
+      record_type(object).from_object(object, db, store, tree_store)
     end
   end
-
-  private
-
-  def build_ao_dataset
-    dbh = db
-    dos = db[:object].filter(:id => db[:digital_object].select(:item))
-
-    # An archival object is...
-    #  A series record; or
-    #  An item record; and
-    #  Not a collection; and
-    #  Not an item that is linked to a digital object
-    aos = dbh[:object].where {
-      Sequel.&(Sequel.|({:id => dbh[:series].select(:id)},
-                        {:id => dbh[:item].select(:id)}),
-               Sequel.~(:id => dbh[:collection].select(:id)),
-               Sequel.~(:id => dos.select(:id)))
-    }
-  end
-
 end
+
+#
+# well, this is good to know:
+#
+### all objects have a corresponding collection, series or item
+#
+# select count(*) from object
+# where id not in (select id from collection)
+#   and id not in (select id from series)
+#   and id not in (select id from item);
+# +----------+
+# | count(*) |
+# +----------+
+# |        0 |
+# +----------+
+#
+### collections always attach to objects without parents
+#
+# select count(*) from collection c, object o where c.id = o.id and o.parent is not null;
+# +----------+
+# | count(*) |
+# +----------+
+# |        0 |
+# +----------+
+#
+### items can have children
+#
+# select count(*) from object o, item i, object c where o.id = i.id and c.parent = o.id;
+# +----------+
+# | count(*) |
+# +----------+
+# |   183003 |
+# +----------+
+#
+#
+# these tables are linkers between items, locations and formats
+# they are named in format.class
+# there will need to be some sort of mapping to instance_type
+# and probably other fields
+#
+#  count   table
+#   2822   container
+#  23660   bound_volume
+#   1112   three_dimensional_object
+#   8227   audio_visual_media
+# 113385   document
+#  29186   physical_image
+#  68220   digital_object
+#      0   browsing_object
+
+

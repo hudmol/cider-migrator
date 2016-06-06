@@ -22,7 +22,9 @@ class MigrationStore
       :agent_corporate_entity_record_context => MarshalStore.new(File.join(basedir, "agent_corporate_entity")),
       # :agent_corporate_entity_contact => MarshalStore.new(File.join(basedir, "agent_corporate_entities_contact")),
       # :agent_corporate_entity_creator => MarshalStore.new(File.join(basedir, "agent_corporate_entities_creator")),
-      :agent_family_record_context => MarshalStore.new(File.join(basedir, "agent_family"))
+      :agent_family_record_context => MarshalStore.new(File.join(basedir, "agent_family")),
+      :vocabulary =>  MarshalStore.new(File.join(basedir, "vocabularies")),
+      :subject =>  MarshalStore.new(File.join(basedir, "subjects")),
     }
 
     # @agent_groups = AgentGroup.new(self)
@@ -219,6 +221,26 @@ class MigrationStore
     record['uri'] = uri
 
     put(:event, record)
+  end
+
+
+  def put_vocabulary(record)
+    uri = "/vocabularies/import_#{SecureRandom.hex}"
+    record['uri'] = uri
+
+    if deliver_promise('vocabulary_uri', record['ref_id'], uri)
+      put(:vocabulary, record)
+    end
+  end
+
+
+  def put_subject(record)
+    uri = "/subjects/import_#{SecureRandom.hex}"
+    record['uri'] = uri
+
+    if deliver_promise('subject_uri', record['id'], uri)
+      put(:subject, record)
+    end
   end
 
 

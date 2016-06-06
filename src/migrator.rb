@@ -73,30 +73,35 @@ class Migrator
       store = MigrationStore.new(store_dir)
       tree_store = TreeStore.new(store)
 
-      chatty("Extracting Archival Object records from CIDER series and items", store, tree_store) do
-        ArchivalObjectConverter.new(@cider_db).call(store, tree_store)
-      end
-
       chatty("Extracting Agent records from CIDER RCRs", store, tree_store) do
         AgentConverter.new(@cider_db).call(store)
+      end
+
+      chatty("Extracting Subject records from various CIDER tables", store, tree_store) do
+        SubjectConverter.new(@cider_db).call(store)
       end
 
       chatty("Extracting Resource records from CIDER Collections", store, tree_store) do
         ResourceConverter.new(@cider_db).call(store)
       end
 
+      chatty("Extracting ArchivalObject records from CIDER Objects", store, tree_store) do
+        ArchivalObjectConverter.new(@cider_db).call(store, tree_store)
+      end
+
       chatty("Extracting Digital Object records from CIDER Digital Objects", store, tree_store) do
         DigitalObjectConverter.new(@cider_db).call(store)
       end
-
 
       chatty("Resolving all parent/child relationships", store, tree_store) do
         # Parent/child & collection relationships
         tree_store.deliver_all_promises!
       end
 
-      store.all_records(:resolve_promises_opts => {:discard_failed_promises => false}) do |record|
-        @out.puts record.to_json
+      chatty("Storing records", store, tree_store) do
+        store.all_records(:resolve_promises_opts => {:discard_failed_promises => false}) do |record|
+          @out.puts record.to_json
+        end
       end
     end
   end
