@@ -67,10 +67,23 @@ class ArchivalObjectConverter < Converter
   class Item < ArchivalObject
     def from_object(object, db, store, tree_store)
       store.put_archival_object(super.merge({
-        'level' => 'item',
+        'level' => find_level(object, db),
         'subjects' => build_subjects(object, db),
         'instances' => build_instances(object, db)
       }))
+    end
+
+    def find_level(object, db)
+      level = 'item'
+
+      item = db[:item].where(:id => object[:id]).first
+      if item[:dc_type] == 1 # Collection
+        if db[:file_folder].where(:item => item[:id]).count > 0
+          level = 'file'
+        end
+      end
+
+      level
     end
 
     def build_subjects(object, db)
