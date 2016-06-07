@@ -53,7 +53,13 @@ class DigitalObjectConverter < Converter
   end
 
   def extract_file_extension(object, item, digital_object, db)
-    db[:file_extension].find(digital_object[:file_extension])[:extension]
+    if digital_object[:file_extension]
+      ext = db[:file_extension][:id => digital_object[:file_extension]][:extension]
+      # drop the leading '.'
+      ext.sub(/^\./, "")
+    else
+      nil
+    end
   end
 
   def extract_file_versions(object, item, digital_object, db)
@@ -67,7 +73,8 @@ class DigitalObjectConverter < Converter
     [{
       'jsonmodel_type '=> 'file_version',
       'file_uri' => digital_object[:permanent_url],
-      'publish' => false, # TODO should this be true?
+      'publish' => false, # FIXME should this be true?
+      'file_format_name' => extract_file_extension(object, item, digital_object, db),
       'checksum' => digital_object[:checksum],
       'checksum_method' => extract_checksum_method(digital_object, db),
     }]
