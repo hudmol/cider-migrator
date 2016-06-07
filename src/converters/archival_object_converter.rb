@@ -66,7 +66,11 @@ class ArchivalObjectConverter < Converter
 
   class Item < ArchivalObject
     def from_object(object, db, store, tree_store)
-      store.put_archival_object(super.merge({'level' => 'item', 'subjects' => build_subjects(object, db)}))
+      store.put_archival_object(super.merge({
+        'level' => 'item',
+        'subjects' => build_subjects(object, db),
+        'instances' => build_instances(object, db)
+      }))
     end
 
     def build_subjects(object, db)
@@ -86,6 +90,27 @@ class ArchivalObjectConverter < Converter
       end
 
       subjects
+    end
+
+    def build_instances(object, db)
+      if (db[:digital_object].where(:item => object[:id]).count > 0)
+        # digital objects can link to a digital object instance
+        digital_object_instances = []
+
+        db[:digital_object].where(:item => object[:id]).each do |digital_object|
+          digital_object_instances << {
+            'instance_type' => 'digital_object',
+            'digital_object' => {
+              'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s)
+            }
+          }
+        end
+
+        digital_object_instances
+      else
+        # TODO link to location instances
+        []
+      end
     end
   end
 
