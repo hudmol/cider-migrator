@@ -30,10 +30,6 @@ class ResourceConverter < Converter
   # |  4 | open       | This collection is processed and open for research                                                |
   # +----+------------+---------------------------------------------------------------------------------------------------+
 
-  # FIXME:
-  # a bunch of collections don't have bulk_date_from or bulk_date_to
-  # but resources require at least one date
-
   class Resource
     def from_collection(collection, db, store)
       obj = db[:object].where(:id => collection[:id]).first
