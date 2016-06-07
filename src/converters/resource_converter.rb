@@ -49,6 +49,7 @@ class ResourceConverter < Converter
         'extents' => build_extents(obj, db),
         'notes' => build_notes(collection),
         'subjects' => build_subjects(collection, db),
+        'linked_agents' => build_linked_agents(collection, db)
       }
 
       store.put_resource(resource_json)
@@ -249,6 +250,23 @@ class ResourceConverter < Converter
       end
 
       subjects
+    end
+
+    def build_linked_agents(collection, db)
+      linked_agents = []
+
+      db[:collection_record_context]
+        .join(:record_context, :id => :collection_record_context__record_context)
+        .filter(:collection_record_context__collection => collection[:id])
+        .select(Sequel.as(:record_context__record_id, :record_id)).each do |row|
+
+        linked_agents << {
+          'role' => 'creator',
+          'ref' => Migrator.promise('record_context_uri', row[:record_id])
+        }
+      end
+
+      linked_agents
     end
 
   end
