@@ -28,6 +28,10 @@ class DigitalObjectConverter < Converter
       'published' => digital_object_id.match(/[\-\.]/) != nil,
       'digital_object_type' => extract_digital_object_type(object, item, digital_object, db),
       'file_versions' => extract_file_versions(object, item, digital_object, db),
+      'notes' => extract_notes(object, item, digital_object, db),
+
+      # FIXME I was assuming 1.5.0 which would mean the following are events
+      # In 1.4.2 these are simple collection_management fields
       # CATALOGUED EVENT 'cataloged_date' => nil, #File Creation Date
       # PROSESSED EVENT 'processed_date' => nil, #Stabilization - date
       # ^^ 'processors' => nil, #Stabilization - by
@@ -36,12 +40,28 @@ class DigitalObjectConverter < Converter
   end
 
   def extract_digital_object_id(object, item, digital_object, db)
-     if object.has_key?(:number)
-       return object[:number]
-     end
+    if db[:digital_object].where(:item => object[:id]).all.length > 1
+      # FIXME these items have multiple digital objects perhaps implying digital object components
+      # just fudge some unique digital_object_ids for the moment
+      return "#{object[:number]}-#{digital_object[:pid]}"
+    else
+      return object[:number]
+    end
 
-     Log.warn("This digital object doesn't have an Item Number (digital_object_id): #{digital_object.inspect}")
-     return "FAKE_DIGITAL_OBJECT_ID_#{object[:id]}"
+    Log.warn("This digital object doesn't have an Item Number (digital_object_id): #{digital_object.inspect}")
+    return "FAKE_DIGITAL_OBJECT_ID_#{object[:id]}"
+  end
+
+  def extract_notes(object, item, digital_object, db)
+    if digital_object[:notes] && !digital_object[:notes].empty?
+      [{
+        'jsonmodel_type' => 'note_digital_object',
+        'type' => 'note',
+        'content' => [digital_object[:notes]]
+      }]
+    else
+      []
+    end
   end
 
   def extract_digital_object_type(object, item, digital_object, db)

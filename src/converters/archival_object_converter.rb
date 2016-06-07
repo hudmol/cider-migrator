@@ -95,13 +95,18 @@ class ArchivalObjectConverter < Converter
     def build_instances(object, db)
       if (db[:digital_object].where(:item => object[:id]).count > 0)
         # digital objects can link to a digital object instance
-        digital_object = db[:digital_object][:item => object[:id]]
-        [{
-          'instance_type' => 'digital_object',
-          'digital_object' => {
-            'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s)
+        digital_object_instances = []
+
+        db[:digital_object].where(:item => object[:id]).each do |digital_object|
+          digital_object_instances << {
+            'instance_type' => 'digital_object',
+            'digital_object' => {
+              'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s)
+            }
           }
-        }]
+        end
+
+        digital_object_instances
       else
         # TODO link to location instances
         []
