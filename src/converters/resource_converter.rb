@@ -42,7 +42,8 @@ class ResourceConverter < Converter
         'restrictions' => (collection[:processing_status].to_i == 3),
         'level' => 'collection',
         'resource_type' => 'collection',
-        'language' => 'eng',
+        # FIXME: there might be more than one language, what to do?
+        'language' => db[:collection_language].where(:collection => collection[:id]).first[:language],
         'dates' => build_dates(collection, obj[:number], db),
         'ead_id' => obj[:number],
         'ead_location' => collection[:permanent_url],
@@ -239,19 +240,28 @@ class ResourceConverter < Converter
         }
       end
 
+      content = []
       db[:collection_material].where(:collection => collection[:id]).each do |row|
+        content << row[:material]
+      end
+      unless content.empty?
         notes << {
           'jsonmodel_type' => 'note_singlepart',
           'type' => 'relatedmaterial',
-          'content' => [row[:material]],
+          'content' => content,
         }
       end
 
+      # FIXME: might need to convert these lang codes
+      content = []
       db[:collection_language].where(:collection => collection[:id]).each do |row|
+        content << row[:language]
+      end
+      unless content.empty?
         notes << {
           'jsonmodel_type' => 'note_singlepart',
           'type' => 'langmaterial',
-          'content' => [row[:language]],
+          'content' => content,
         }
       end
 
