@@ -12,12 +12,7 @@ class DigitalObjectConverter < Converter
 
   def build_from_digital_object(digital_object, store)
     item = db[:item][:id => digital_object[:item]]
-
-    raise "No item for #{digital_object.inspect}" if item.nil?
-
     object = db[:object][:id => item[:id]]
-
-    raise "No object for #{digital_object.inspect}" if object.nil?
 
     digital_object_id = extract_digital_object_id(object, item, digital_object, db)
 
@@ -25,7 +20,7 @@ class DigitalObjectConverter < Converter
       'id' => digital_object[:id].to_s,
       'digital_object_id' => digital_object_id,
       'title' => object[:title],
-      'published' => digital_object_id.match(/[\-\.]/) != nil,
+      'publish' => extract_published(object, item, digital_object, db),
       'digital_object_type' => extract_digital_object_type(object, item, digital_object, db),
       'file_versions' => extract_file_versions(object, item, digital_object, db),
       'notes' => extract_notes(object, item, digital_object, db),
@@ -39,6 +34,12 @@ class DigitalObjectConverter < Converter
     }
   end
 
+  def extract_published(object, item, digital_object, db)
+    # A published digital object contains letters and numbers separated by '.'
+    # If unpublished, the components are separated with a '-'
+    object[:number].match(/\-/).nil?
+  end
+
   def extract_digital_object_id(object, item, digital_object, db)
     if db[:digital_object].where(:item => object[:id]).all.length > 1
       # FIXME these items have multiple digital objects perhaps implying digital object components
@@ -47,9 +48,6 @@ class DigitalObjectConverter < Converter
     else
       return object[:number]
     end
-
-    Log.warn("This digital object doesn't have an Item Number (digital_object_id): #{digital_object.inspect}")
-    return "FAKE_DIGITAL_OBJECT_ID_#{object[:id]}"
   end
 
   def extract_notes(object, item, digital_object, db)
