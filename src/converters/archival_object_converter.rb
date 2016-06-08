@@ -141,7 +141,7 @@ class ArchivalObjectConverter < Converter
       {
         'jsonmodel_type' => 'container',
         'type_1' => type,
-        'indicator_1' => db[:location_title].where(:location => location[:id]).first[:title],
+        'indicator_1' => db[:location_title].where(:location => location[:id]).first[:title][0..254],
         'barcode_1' => location[:barcode]
       }
     end

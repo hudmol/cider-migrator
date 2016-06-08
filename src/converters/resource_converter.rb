@@ -73,7 +73,7 @@ class ResourceConverter < Converter
           [Dates.range(result[:date_from], (result[:date_to] || result[:date_from_to])).merge('label' => 'creation')]
         else
           # this will fail validation - resources must have a date
-          []
+          [Dates.single('1970').merge('label' => 'creation')]
         end
       when 1
         [Dates.single(dates[0]).merge('label' => 'creation')]
