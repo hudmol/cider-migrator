@@ -105,26 +105,82 @@ class ArchivalObjectConverter < Converter
       subjects
     end
 
-    def build_instances(object, db)
-      if (db[:digital_object].where(:item => object[:id]).count > 0)
-        # digital objects can link to a digital object instance
-        digital_object_instances = []
+    def build_container(class_object, db)
+      format = db[:format].where(:id => class_object[:format]).first
 
-        db[:digital_object].where(:item => object[:id]).each do |digital_object|
-          digital_object_instances << {
-            'instance_type' => 'digital_object',
-            'digital_object' => {
-              'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s)
-            }
-          }
-        end
+      # FIXME: this mapping is just lazy guesswork, will need review
+      #        and we may be going to v1.5 so this will all be wrong anway
+      type = if format
+               case format[:class]
+               when 'bound_volume'
+                 'volume'
+               else
+                 case format[:name]
+                 when 'book'
+                   'volume'
+                 when 'photo frames'
+                   'frame'
+                 when 'garment'
+                   'object'
+                 when '16mm', '3/4 -inch', '3/4-inch', 'audio tape', 'sound tape reel', 'tape reels'
+                   'reel'
+                 when 'CD-Rom', 'audiocassette', 'audiocassettes', 'audiograph', 'Betacam (TM)', 'CD', 'compact disc', 'compact disk', 'DVD'
+                   'case'
+                 else
+                   'box'
+                 end
+               end
+             else
+               # some class_objects don't have a format record
+               'box'
+             end
 
-        digital_object_instances
-      else
-        # TODO link to location instances
-        []
-      end
+      location = db[:location].where(:id => class_object[:location]).first
+      unit_type = db[:unit_type].where(:id => location[:unit_type]).first
+
+      {
+        'jsonmodel_type' => 'container',
+        'type_1' => type,
+        'indicator_1' => db[:location_title].where(:location => location[:id]).first[:title],
+        'barcode_1' => location[:barcode]
+      }
     end
+
+    CLASS_INSTANCE = {
+      :container => 'mixed_materials', # ???
+      :bound_volume => 'books',
+      :three_dimensional_object => 'realia',
+      :audio_visual_media => 'audio', # or moving_images
+      :document => 'text',
+      :physical_image => 'graphic_materials',
+      :digital_object => 'digital_object',
+      :browsing_object => 'digital_object_link', # made up - there aren't any of these anyway
+    }
+
+    def build_instances(object, db)
+      instances = []
+
+      CLASS_INSTANCE.each_pair do |cider_class, instance_type|
+        db[cider_class].where(:item => object[:id]).each do |class_object|
+          instance = {
+            'jsonmodel_type' => 'instance',
+            'instance_type' => instance_type,
+          }
+          if cider_class == :digital_object
+            instance['digital_object'] = {
+              'ref' => Migrator.promise('digital_object_uri', class_object[:id].to_s)
+            }
+          else
+            instance['container'] = build_container(class_object, db)
+          end
+
+          instances << instance
+        end
+      end
+
+      instances
+    end
+
   end
 
 
