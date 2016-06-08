@@ -12,12 +12,7 @@ class DigitalObjectConverter < Converter
 
   def build_from_digital_object(digital_object, store)
     item = db[:item][:id => digital_object[:item]]
-
-    raise "No item for #{digital_object.inspect}" if item.nil?
-
     object = db[:object][:id => item[:id]]
-
-    raise "No object for #{digital_object.inspect}" if object.nil?
 
     digital_object_id = extract_digital_object_id(object, item, digital_object, db)
 
@@ -25,18 +20,23 @@ class DigitalObjectConverter < Converter
       'id' => digital_object[:id].to_s,
       'digital_object_id' => digital_object_id,
       'title' => object[:title],
-      'published' => digital_object_id.match(/[\-\.]/) != nil,
+      'publish' => extract_published(object, item, digital_object, db),
       'digital_object_type' => extract_digital_object_type(object, item, digital_object, db),
       'file_versions' => extract_file_versions(object, item, digital_object, db),
       'notes' => extract_notes(object, item, digital_object, db),
-
-      # FIXME I was assuming 1.5.0 which would mean the following are events
-      # In 1.4.2 these are simple collection_management fields
+      # FIXME These are events:
       # CATALOGUED EVENT 'cataloged_date' => nil, #File Creation Date
       # PROSESSED EVENT 'processed_date' => nil, #Stabilization - date
-      # ^^ 'processors' => nil, #Stabilization - by
-      ## EVENT: 'rights_transferred' => nil, #Rights
+      #                 'processors' => nil, #Stabilization - by
+      # RIGHTS_TRANSFERRED EVENT: 'rights_transferred' => nil, #Rights
+
     }
+  end
+
+  def extract_published(object, item, digital_object, db)
+    # A published digital object contains letters and numbers separated by '.'
+    # If unpublished, the components are separated with a '-'
+    object[:number].match(/\-/).nil?
   end
 
   def extract_digital_object_id(object, item, digital_object, db)
@@ -47,9 +47,6 @@ class DigitalObjectConverter < Converter
     else
       return object[:number]
     end
-
-    Log.warn("This digital object doesn't have an Item Number (digital_object_id): #{digital_object.inspect}")
-    return "FAKE_DIGITAL_OBJECT_ID_#{object[:id]}"
   end
 
   def extract_notes(object, item, digital_object, db)
