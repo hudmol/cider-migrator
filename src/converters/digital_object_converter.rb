@@ -14,11 +14,9 @@ class DigitalObjectConverter < Converter
     item = db[:item][:id => digital_object[:item]]
     object = db[:object][:id => item[:id]]
 
-    digital_object_id = extract_digital_object_id(object, item, digital_object, db)
-
     {
       'id' => digital_object[:id].to_s,
-      'digital_object_id' => digital_object_id,
+      'digital_object_id' => extract_digital_object_id(object, item, digital_object, db),
       'title' => object[:title],
       'publish' => extract_published(object, item, digital_object, db),
       'digital_object_type' => extract_digital_object_type(object, item, digital_object, db),
@@ -43,7 +41,7 @@ class DigitalObjectConverter < Converter
     if db[:digital_object].where(:item => object[:id]).all.length > 1
       # FIXME these items have multiple digital objects perhaps implying digital object components
       # just fudge some unique digital_object_ids for the moment
-      return "#{object[:number]}-#{digital_object[:pid]}"
+      return "#{object[:number]} [#{digital_object[:id]}]"
     else
       return object[:number]
     end
