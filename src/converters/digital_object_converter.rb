@@ -24,13 +24,12 @@ class DigitalObjectConverter < Converter
       'digital_object_type' => extract_digital_object_type(object, item, digital_object, db),
       'file_versions' => extract_file_versions(object, item, digital_object, db),
       'notes' => extract_notes(object, item, digital_object, db),
-
-      # FIXME I was assuming 1.5.0 which would mean the following are events
-      # In 1.4.2 these are simple collection_management fields
+      # FIXME These are events:
       # CATALOGUED EVENT 'cataloged_date' => nil, #File Creation Date
       # PROSESSED EVENT 'processed_date' => nil, #Stabilization - date
-      # ^^ 'processors' => nil, #Stabilization - by
-      ## EVENT: 'rights_transferred' => nil, #Rights
+      #                 'processors' => nil, #Stabilization - by
+      # RIGHTS_TRANSFERRED EVENT: 'rights_transferred' => nil, #Rights
+
     }
   end
 
