@@ -6,12 +6,13 @@ class SubjectConverter < Converter
         'jsonmodel_type' => 'subject',
         'id' => "#{type.to_s}:#{subjecty_thing[:id]}",
         'source' => 'local',
-        'scope_note' => subjecty_thing[:note],
         'terms' => build_terms(subjecty_thing, type),
         'vocabulary' => Migrator.promise('vocabulary_uri', 'tufts'),
 #        'authority_id' => '',
 #        'external_documents' => [],
       }
+
+      subject_json['scope_note'] = subjecty_thing[:note] if subjecty_thing[:note]
 
       store.put_subject(subject_json)
     end
@@ -36,9 +37,10 @@ class SubjectConverter < Converter
     def build_terms(subjecty_thing, type)
       terms = []
 
+      # there is one authority_name whose name is null, hence the UNKNOWN
       terms << {
         'jsonmodel_type' => 'term',
-        'term' => subjecty_thing[TERM_FIELD[type]],
+        'term' => subjecty_thing[TERM_FIELD[type]] || "UNKNOWN",
         'term_type' => TERM_TYPE[type],
         'vocabulary' => Migrator.promise('vocabulary_uri', 'tufts'),
       }
