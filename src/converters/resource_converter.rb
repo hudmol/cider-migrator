@@ -42,12 +42,13 @@ class ResourceConverter < Converter
         'restrictions' => (collection[:processing_status].to_i == 3),
         'level' => 'collection',
         'resource_type' => 'collection',
-        'language' => 'eng',
+        # FIXME: there might be more than one language, what to do?
+        'language' => db[:collection_language].where(:collection => collection[:id]).first[:language],
         'dates' => build_dates(collection, obj[:number], db),
         'ead_id' => obj[:number],
         'ead_location' => collection[:permanent_url],
         'extents' => build_extents(obj, db),
-        'notes' => build_notes(collection),
+        'notes' => build_notes(collection, db),
         'subjects' => build_subjects(collection, db),
         'linked_agents' => build_linked_agents(collection, db)
       }
@@ -203,7 +204,7 @@ class ResourceConverter < Converter
     end
 
 
-    def build_notes(collection)
+    def build_notes(collection, db)
       notes = []
 
       if collection[:organization]
@@ -236,6 +237,31 @@ class ResourceConverter < Converter
           'jsonmodel_type' => 'note_singlepart',
           'type' => 'scopecontent',
           'content' => [collection[:scope]],
+        }
+      end
+
+      content = []
+      db[:collection_material].where(:collection => collection[:id]).each do |row|
+        content << row[:material]
+      end
+      unless content.empty?
+        notes << {
+          'jsonmodel_type' => 'note_singlepart',
+          'type' => 'relatedmaterial',
+          'content' => content,
+        }
+      end
+
+      # FIXME: might need to convert these lang codes
+      content = []
+      db[:collection_language].where(:collection => collection[:id]).each do |row|
+        content << row[:language]
+      end
+      unless content.empty?
+        notes << {
+          'jsonmodel_type' => 'note_singlepart',
+          'type' => 'langmaterial',
+          'content' => content,
         }
       end
 
