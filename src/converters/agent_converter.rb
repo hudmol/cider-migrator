@@ -142,7 +142,7 @@ class AgentConverter < Converter
 
     def build_name(name_string)
       {
-        'sort_name' => name_string,
+        'sort_name_auto_generate' => true,
         'jsonmodel_type' => 'name_corporate_entity',
         'primary_name' => name_string,
         'source' => 'local',
@@ -198,7 +198,7 @@ class AgentConverter < Converter
 
     def build_name(name_string)
       {
-        'sort_name' => name_string,
+        'sort_name_auto_generate' => true,
         'jsonmodel_type' => 'name_family',
         'family_name' => name_string,
         'source' => 'local',
@@ -234,11 +234,11 @@ class AgentConverter < Converter
       (last_name, rest_name) = name_string.split(', ', 2)
 
       {
-        'sort_name' => name_string,
+        'sort_name_auto_generate' => true,
         'jsonmodel_type' => 'name_person',
         'primary_name' => last_name,
         'rest_of_name' => rest_name,
-        'name_order' => 'indirect',
+        'name_order' => 'inverted',
         'source' => 'local',
       }
     end
