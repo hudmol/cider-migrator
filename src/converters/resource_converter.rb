@@ -257,7 +257,7 @@ class ResourceConverter < Converter
 
       content = []
       db[:collection_language].where(:collection => collection[:id]).each do |row|
-        content << LANGUAGES.fetch(row[:language])
+        content << LANGUAGES.fetch(fix_language(row[:language]))
       end
       unless content.empty?
         notes << {
@@ -268,6 +268,16 @@ class ResourceConverter < Converter
       end
 
       notes
+    end
+
+    def fix_language(code)
+      case code
+          when 'grk'
+            # Assume we want Modern Greek
+            'gre'
+          else
+            code
+      end
     end
 
     def build_subjects(collection, db)
