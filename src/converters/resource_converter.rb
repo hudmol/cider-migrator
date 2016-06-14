@@ -257,7 +257,7 @@ class ResourceConverter < Converter
 
       content = []
       db[:collection_language].where(:collection => collection[:id]).each do |row|
-        content << LANGUAGES[row[:language]]
+        content << LANGUAGES.fetch(row[:language])
       end
       unless content.empty?
         notes << {
