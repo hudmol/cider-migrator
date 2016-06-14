@@ -18,21 +18,23 @@
 
 -- 538 collections don't have a date in cider_20160527
 -- resources need a date. what to do?
-select count(obj.number) from collection col, object obj where col.id = obj.id and col.bulk_date_from is NULL and col.bulk_date_to is NULL;
-update collection set bulk_date_from = '1970' where bulk_date_from is NULL and bulk_date_to is NULL;
+-- now generating date 1453 in converter
+-- select count(obj.number) from collection col, object obj where col.id = obj.id and col.bulk_date_from is NULL and col.bulk_date_to is NULL;
+-- update collection set bulk_date_from = '1970' where bulk_date_from is NULL and bulk_date_to is NULL;
 
 -- seven collections don't have any locations in cider_20160527
 -- resources must have at least one extent, what to do?
-select obj.number, col.id from collection col, object obj where col.id = obj.id and col.id not in (select object from object_location);
+-- now generating fake extent in converter
+-- select obj.number, col.id from collection col, object obj where col.id = obj.id and col.id not in (select object from object_location);
 
 -- starting to look at building trees under resources in cider_20160527
 -- found two objects that don't have a parent and aren't linked to a collection
-select * from object where parent is null and id not in (select id from collection);
+-- select * from object where parent is null and id not in (select id from collection);
 -- looking at objects with similar numbers
-select * from object where number like 'UP006%';
+-- select * from object where number like 'UP006%';
 -- it seems likely these guys should have a parent of 32378, so
-update object set parent = 32378  where parent is null and id not in (select id from collection);
-
+-- update object set parent = 32378  where parent is null and id not in (select id from collection);
+-- fixed in cider_20160608
 
 -- SUBJECTs
 
