@@ -29,8 +29,38 @@ class ArchivalObjectConverter < Converter
 
       record['resource'] = {'ref' => Migrator.promise('collection_uri', record['id'])}
 
+      record.merge!(build_audit_info(object, db))
+
       record
     end
+
+    private
+
+    def build_audit_info(object, db)
+      audit_fields = {}
+
+      created = db[:log].join(:staff, :staff__id => :log__staff)
+                  .where(:log__audit_trail => object[:audit_trail])
+                  .and(:log__action => 'create').first
+
+      if created
+        audit_fields['created_by'] = "#{created[:first_name]} #{created[:last_name]}"
+        audit_fields['create_time'] = created[:timestamp].getutc.strftime('%Y-%m-%d %H:%M:%S')
+      end
+
+      updated = db[:log].join(:staff, :staff__id => :log__staff)
+                  .where(:log__audit_trail => object[:audit_trail])
+                  .and(:log__action => 'update')
+                  .order(:log__id).last
+
+      if updated
+        audit_fields['last_modified_by'] = "#{updated[:first_name]} #{updated[:last_name]}"
+        audit_fields['user_mtime'] = updated[:timestamp].getutc.strftime('%Y-%m-%d %H:%M:%S')
+      end
+
+      audit_fields
+    end
+
   end
 
 
