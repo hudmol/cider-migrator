@@ -20,7 +20,7 @@ class Dates
       'date_type' => 'range',
       'begin' => dates[0],
       'end' => dates[1],
-      'label' => dates.join(' -- '),
+      'expression' => dates.join(' -- '),
     }
   end
 
