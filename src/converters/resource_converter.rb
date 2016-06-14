@@ -1,5 +1,8 @@
-class ResourceConverter < Converter
+require 'yaml'
 
+LANGUAGES = YAML.load_file('language_iso639_2.yml')
+
+class ResourceConverter < Converter
   # collections don't seem to have ids :(
   # they have permanent urls
   # and in at least one record the processing_notes column contains mentions of what looks like an id 'MS001'
@@ -252,10 +255,9 @@ class ResourceConverter < Converter
         }
       end
 
-      # FIXME: might need to convert these lang codes
       content = []
       db[:collection_language].where(:collection => collection[:id]).each do |row|
-        content << row[:language]
+        content << LANGUAGES[row[:language]]
       end
       unless content.empty?
         notes << {
