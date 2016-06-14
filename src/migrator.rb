@@ -18,6 +18,8 @@ $backend_url = ARGV.fetch(1) { show_usage }
 $repo_id = ARGV.fetch(2) { show_usage }
 $admin_password = ARGV.fetch(3) { show_usage }
 
+$users_csv = 'users.csv'
+
 $basedir = File.expand_path(File.join(File.dirname(__FILE__), ".."))
 
 # Load all converters
@@ -103,6 +105,16 @@ class Migrator
           @out.puts record.to_json
         end
       end
+
+      chatty("Creating users", store, tree_store) do
+        if File.exists? $users_csv
+          Log.info("Found #{$users_csv}, importing users")
+          Users.new($users_csv).import
+        else
+          Log.warn("No user.csv provided so no users imported")
+        end
+      end
+
     end
   end
 
