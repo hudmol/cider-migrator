@@ -32,7 +32,7 @@ class Users
       begin
         user = JSONModel(:user).from_hash({
                                             'username' => username,
-                                            'name' => "#{entry['First Name']} #{'Last Name'}",
+                                            'name' => "#{entry['First Name']} #{entry['Last Name']}",
                                             'first_name' => entry['First Name'],
                                             'last_name' => entry['Last Name'],
                                             'is_admin' => is_admin,
