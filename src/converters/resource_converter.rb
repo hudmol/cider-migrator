@@ -347,7 +347,7 @@ class ResourceConverter < Converter
 
       if created
         audit_fields['created_by'] = "#{created[:first_name]} #{created[:last_name]}"
-        audit_fields['create_time'] = created[:timestamp].getutc.strftime('%Y-%m-%d %H:%M:%S')
+        audit_fields['create_time'] = Utils.convert_timestamp_for_db(created[:timestamp])
       end
 
       updated = db[:log].join(:staff, :staff__id => :log__staff)
@@ -357,7 +357,7 @@ class ResourceConverter < Converter
 
       if updated
         audit_fields['last_modified_by'] = "#{updated[:first_name]} #{updated[:last_name]}"
-        audit_fields['user_mtime'] = updated[:timestamp].getutc.strftime('%Y-%m-%d %H:%M:%S')
+        audit_fields['user_mtime'] = Utils.convert_timestamp_for_db(updated[:timestamp])
       end
 
       audit_fields
