@@ -141,6 +141,9 @@ def main
 
   exported_file = File.join($basedir, "exported_#{Time.now.to_i}.json")
 
+  # Don't mess with timezones
+  Sequel.default_timezone = nil
+
   Sequel.connect($cider_url) do |db|
     File.open(exported_file, "w") do |fh|
       Migrator.new(db, fh).call

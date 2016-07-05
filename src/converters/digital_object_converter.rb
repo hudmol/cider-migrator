@@ -1,3 +1,5 @@
+require 'time'
+
 class DigitalObjectConverter < Converter
 
   def call(store)
@@ -27,7 +29,7 @@ class DigitalObjectConverter < Converter
       'file_versions' => extract_file_versions(object, item, digital_object, db),
       'notes' => extract_notes(object, item, digital_object, db),
       'user_defined' => extract_user_defined(object, item, digital_object, db),
-    }
+    }.merge(extract_audit_info(object, db))
 
     # FIXME Need to generate events:
     # CATALOGUED EVENT 'cataloged_date' => nil, #File Creation Date
@@ -237,4 +239,29 @@ class DigitalObjectConverter < Converter
     db[:location][:id => digital_object[:location]]
   end
 
+
+  def extract_audit_info(object, db)
+    audit_fields = {}
+
+    created = db[:log].join(:staff, :staff__id => :log__staff)
+                .where(:log__audit_trail => object[:audit_trail])
+                .and(:log__action => 'create').first
+
+    if created
+      audit_fields['created_by'] = "#{created[:first_name]} #{created[:last_name]}"
+      audit_fields['create_time'] = Utils.convert_timestamp_for_db(created[:timestamp])
+    end
+
+    updated = db[:log].join(:staff, :staff__id => :log__staff)
+                .where(:log__audit_trail => object[:audit_trail])
+                .and(:log__action => 'update')
+                .order(:log__id).last
+
+    if updated
+      audit_fields['last_modified_by'] = "#{updated[:first_name]} #{updated[:last_name]}"
+      audit_fields['user_mtime'] =Utils.convert_timestamp_for_db(updated[:timestamp])
+    end
+
+    audit_fields
+  end
 end

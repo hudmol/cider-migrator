@@ -56,7 +56,7 @@ class ResourceConverter < Converter
         'notes' => build_notes(collection, db),
         'subjects' => build_subjects(collection, db),
         'linked_agents' => build_linked_agents(collection, db)
-      }
+      }.merge(build_audit_info(obj, db))
 
       store.put_resource(resource_json)
     end
@@ -337,6 +337,31 @@ class ResourceConverter < Converter
       end
 
       linked_agents
+    end
+
+    def build_audit_info(object, db)
+      audit_fields = {}
+
+      created = db[:log].join(:staff, :staff__id => :log__staff)
+                  .where(:log__audit_trail => object[:audit_trail])
+                  .and(:log__action => 'create').first
+
+      if created
+        audit_fields['created_by'] = "#{created[:first_name]} #{created[:last_name]}"
+        audit_fields['create_time'] = Utils.convert_timestamp_for_db(created[:timestamp])
+      end
+
+      updated = db[:log].join(:staff, :staff__id => :log__staff)
+                  .where(:log__audit_trail => object[:audit_trail])
+                  .and(:log__action => 'update')
+                  .order(:log__id).last
+
+      if updated
+        audit_fields['last_modified_by'] = "#{updated[:first_name]} #{updated[:last_name]}"
+        audit_fields['user_mtime'] = Utils.convert_timestamp_for_db(updated[:timestamp])
+      end
+
+      audit_fields
     end
 
   end
