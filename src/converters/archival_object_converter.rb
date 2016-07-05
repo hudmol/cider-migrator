@@ -18,6 +18,10 @@ class ArchivalObjectConverter < Converter
       parent = db[:object].where(:id => object[:parent]).first
       parent_id = parent[:number]
 
+      # The position of the current AO is the number of siblings with smaller
+      # numbers than it (positions are zero-indexed).
+      record['position'] = db[:object].filter(:parent => object[:parent]).where { number < object[:number] }.count
+
       tree_store.record_parent(:child => record['id'], :parent => parent_id)
 
       unless parent[:parent].nil?
