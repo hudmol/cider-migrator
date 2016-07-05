@@ -64,9 +64,7 @@ class ArchivalObjectConverter < Converter
 
       item = db[:item].where(:id => object[:id]).first
       if item[:dc_type] == 1 # Collection
-        if db[:file_folder].where(:item => item[:id]).count > 0
-          level = 'file'
-        end
+        level = 'file'
       end
 
       level
