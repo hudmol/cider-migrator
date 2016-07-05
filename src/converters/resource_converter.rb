@@ -218,34 +218,54 @@ class ResourceConverter < Converter
 
       if collection[:organization]
         notes << {
-          'jsonmodel_type' => 'note_singlepart',
+          'jsonmodel_type' => 'note_multipart',
           'type' => 'arrangement',
-          'content' => [collection[:organization]],
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'content' => collection[:organization],
+            }
+          ]
         }
       end
 
       if collection[:history]
         notes << {
-          'jsonmodel_type' => 'note_singlepart',
+          'jsonmodel_type' => 'note_multipart',
           'type' => 'custodhist',
-          'content' => [collection[:history]],
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'content' => collection[:history],
+            }
+          ],
           'publish' => false,
         }
       end
 
       if collection[:processing_notes]
         notes << {
-          'jsonmodel_type' => 'note_singlepart',
+          'jsonmodel_type' => 'note_multipart',
           'type' => 'processinfo',
-          'content' => [collection[:processing_notes]],
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'content' => collection[:processing_notes],
+            }
+          ]
         }
       end
 
       if collection[:scope]
         notes << {
-          'jsonmodel_type' => 'note_singlepart',
+          'jsonmodel_type' => 'note_multipart',
           'type' => 'scopecontent',
-          'content' => [collection[:scope]],
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'content' => collection[:scope],
+            }
+          ]
         }
       end
 
@@ -255,9 +275,14 @@ class ResourceConverter < Converter
       end
       unless content.empty?
         notes << {
-          'jsonmodel_type' => 'note_singlepart',
+          'jsonmodel_type' => 'note_multipart',
           'type' => 'relatedmaterial',
-          'content' => content,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'content' => content,
+            }
+          ]
         }
       end
 
