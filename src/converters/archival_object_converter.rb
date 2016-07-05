@@ -138,6 +138,7 @@ class ArchivalObjectConverter < Converter
       :physical_image => 'graphic_materials',
       :digital_object => 'digital_object',
       :browsing_object => 'digital_object_link', # made up - there aren't any of these anyway
+      :file_folder => 'mixed_materials',         # ???
     }
 
     def build_instances(object, db)
