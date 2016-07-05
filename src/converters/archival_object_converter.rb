@@ -11,7 +11,6 @@ class ArchivalObjectConverter < Converter
 #        'restrictions' => (collection[:processing_status].to_i == 3),
         'language' => 'eng',
 #        'dates' => build_dates(collection),
-        'extents' => build_extents(object, db),
 #        'notes' => build_notes(collection),
       }
 
@@ -32,23 +31,6 @@ class ArchivalObjectConverter < Converter
 
       record
     end
-
-    private
-
-    def build_extents(object, db)
-      extents = []
-
-      extents << {
-         'jsonmodel_type' => 'extent',
-         'portion' => 'whole',
-         'number' => '1',
-         'extent_type' => 'volumes',
-      }
-
-
-      extents
-    end
-
   end
 
 
