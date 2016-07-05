@@ -7,7 +7,7 @@ class ArchivalObjectConverter < Converter
         'title' => object[:title],
         'id' => object[:number],
         'component_id' => object[:number],
-#        'published' => (collection[:processing_status].to_i >= 3).to_s,
+        'publish' => true,
 #        'restrictions' => (collection[:processing_status].to_i == 3),
         'language' => 'eng',
 #        'dates' => build_dates(collection),

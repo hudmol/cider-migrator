@@ -38,7 +38,6 @@ class AgentConverter < Converter
 
       {
         'id' => record_context[:record_id],
-        'published' => (record_context[:publication_status].to_i >= 2).to_s,
         'names' => [primary_name, *alternate_names],
         'dates_of_existence' => build_dates(record_context),
         'notes' => build_notes(record_context),

@@ -41,7 +41,9 @@ class ResourceConverter < Converter
         'title' => obj[:title],
         'id' => obj[:number],
         'id_0' => obj[:number],
-        'published' => (collection[:processing_status].to_i >= 3).to_s,
+
+        # Force publish to true - https://www.pivotaltracker.com/story/show/123569271
+        'publish' => true,
         'restrictions' => (collection[:processing_status].to_i == 3),
         'level' => 'collection',
         'resource_type' => 'collection',
@@ -239,7 +241,6 @@ class ResourceConverter < Converter
               'content' => collection[:history],
             }
           ],
-          'publish' => false,
         }
       end
 
