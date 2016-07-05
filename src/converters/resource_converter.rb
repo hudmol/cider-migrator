@@ -241,8 +241,6 @@ class ResourceConverter < Converter
               'content' => collection[:history],
             }
           ],
-          # THINKME: Is this really meant to be unpublished?
-          'publish' => false,
         }
       end
 
