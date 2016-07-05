@@ -141,16 +141,15 @@ class DigitalObjectConverter < Converter
   end
 
   def extract_file_versions(object, item, digital_object, db)
-    if (!digital_object.has_key?(:permanent_url) ||
-        digital_object[:permanent_url].nil? ||
-        digital_object[:permanent_url].empty?)
+    url = digital_object[:permanent_url]
 
-      return []
+    if !url || url.empty?
+      url = 'example://no-url-available'
     end
 
     [{
       'jsonmodel_type '=> 'file_version',
-      'file_uri' => digital_object[:permanent_url],
+      'file_uri' => url,
       'publish' => extract_file_published(digital_object, db),
       'file_format_name' => extract_file_extension(object, item, digital_object, db),
       'checksum' => digital_object[:checksum],
