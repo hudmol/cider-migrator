@@ -2,30 +2,6 @@ class AgentConverter < Converter
   # FIXME We'll want to move this stuff into its own "converter" file at
   # some point.
 
-  # FIXME: Question: the record_context table links to "sources" like:
-  #
-  #  select * from record_context_source where record_context = (select id from record_context where record_id = 'RCR00587');
-  #
-  # and a source is a string like this:
-  #
-  #  Tufts University. Annual Report 1957, ms. Tufts Libraries 1855 -1955: Annual Reports 1862-1995 UA016.001, Box 1 File 95. Tufts University, Medford, MA.
-  #
-  # Is that actually referring to an archival object that we should create in
-  # the system?  Or a container?  Or both?
-
-  # FIXME: Record contexts also have a "function" which is one of:
-  #
-  # +----+------------------+
-  # | id | name             |
-  # +----+------------------+
-  # |  1 | Test Function    |
-  # |  2 | Library Services |
-  # |  6 | Instruction      |
-  # +----+------------------+
-  #
-  # It's not obvious where in ArchivesSpace this would map to.
-
-
   # Build up our agent record pulling in specific behaviour from our
   # subclasses as needed.
   class BaseAgent
@@ -42,6 +18,7 @@ class AgentConverter < Converter
         'dates_of_existence' => build_dates(record_context),
         'notes' => build_notes(record_context),
         'related_agents' => build_related_agents(record_context, db),
+        'external_documents' => build_external_documents(record_context, db),
       }
     end
 
@@ -130,6 +107,52 @@ class AgentConverter < Converter
       raise "Unsure: #{related_record_context.inspect}"
     end
 
+
+    def build_external_documents(record_context, db)
+      external_documents = []
+
+      rows = db[:record_context_source].filter(:record_context => record_context[:id])
+
+      rows.each do |row|
+        docs = parse_source(row[:source])
+        docs.each do |doc|
+          title = doc.reject {|s| s =~ /^http/ }.compact.join(' ')
+          location = doc.select {|s| s =~ /^http/ }
+
+          external_documents << {
+            'title' => title.empty? ? "Untitled" : title,
+            'location' => location.empty? ? "example://no-url-available" : location.first
+          }
+        end
+      end
+
+      external_documents
+    end
+
+    def parse_source(s)
+      result = []
+
+      while (nexturl = s.index(/https?:\/\//))
+        entry = []
+
+        entry << s[0..nexturl - 1]
+        s = s[nexturl..-1]
+        end_of_url = s.index(/\s/) || -1
+
+        entry << s[0..end_of_url].gsub(/\.+$/, '')
+        s = s[end_of_url..-1]
+
+        if s[0..11] =~ /(accessed|retrieved)/i
+          end_of_accessed_note = s.index('.') || -1
+          entry << s[0..end_of_accessed_note]
+          s = s[end_of_accessed_note..-1]
+        end
+
+        result << entry.map {|s| s.gsub(/^[\r\n\., ]+/, '').gsub(/[\r\n\., ]+$/, '')}
+      end
+
+      result
+    end
   end
 
   class AgentCorporateEntity < BaseAgent
@@ -155,32 +178,32 @@ class AgentConverter < Converter
           'jsonmodel_type' => 'agent_relationship_earlierlater',
           # FIXME have I got this around the right way?
           'relator' => 'is_later_form_of',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       when 'isFollowedBy'
         {
           'jsonmodel_type' => 'agent_relationship_earlierlater',
           # FIXME: have I got this around the right way?
           'relator' => 'is_earlier_form_of',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       when 'isPartOf', 'isChildOf'
         {
           'jsonmodel_type' => 'agent_relationship_subordinatesuperior',
           'relator' => 'is_subordinate_to',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       when 'hasPart', 'isParentOf'
         {
           'jsonmodel_type' => 'agent_relationship_subordinatesuperior',
           'relator' => 'is_superior_to',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       when 'hasMember', 'isMemberOf', 'isAssociatedWith', 'reportsTo', 'hasReport'
         {
           'jsonmodel_type' => 'agent_relationship_associative',
           'relator' => 'is_associative_with',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       else
         super
@@ -210,7 +233,7 @@ class AgentConverter < Converter
         {
           'jsonmodel_type' => 'agent_relationship_associative',
           'relator' => 'is_associative_with',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       when 'isParentOf', 'isSpouseOf'
         Log.warn("This relationship seems weird: #{related_record_context.inspect}")
@@ -248,19 +271,19 @@ class AgentConverter < Converter
         {
           'jsonmodel_type' => 'agent_relationship_parentchild',
           'relator' => 'is_parent_of',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       when 'isChildOf'
         {
           'jsonmodel_type' => 'agent_relationship_parentchild',
           'relator' => 'is_child_of',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       when 'isMemberOf', 'isAssociatedWith', 'isPartOf', 'isSpouseOf', 'isFollowedBy', 'isGrandparentOf', 'isGrandchildOf'
         {
           'jsonmodel_type' => 'agent_relationship_associative',
           'relator' => 'is_associative_with',
-          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to]),
+          'dates' => Dates.range(related_record_context[:date_from], related_record_context[:date_to], 'agent_relation'),
         }
       else
         super

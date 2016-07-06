@@ -10,7 +10,7 @@ class Dates
   end
 
 
-  def self.range(start_date, end_date)
+  def self.range(start_date, end_date, label = nil)
     dates = [start_date, end_date].map {|s| Utils.trim(s) }.compact
 
     return nil if dates.empty?
@@ -21,6 +21,7 @@ class Dates
       'begin' => dates[0],
       'end' => dates[1],
       'expression' => dates.join(' -- '),
+      'label' => label,
     }
   end
 
