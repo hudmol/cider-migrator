@@ -1,3 +1,5 @@
+require_relative 'agent_source_parser'
+
 class AgentConverter < Converter
   # FIXME We'll want to move this stuff into its own "converter" file at
   # some point.
@@ -113,15 +115,14 @@ class AgentConverter < Converter
 
       rows = db[:record_context_source].filter(:record_context => record_context[:id])
 
-      rows.each do |row|
-        docs = parse_source(row[:source])
-        docs.each do |doc|
-          title = doc.reject {|s| s =~ /^http/ }.compact.join(' ')
-          location = doc.select {|s| s =~ /^http/ }
+      source_parser = AgentSourceParser.new
 
+      rows.each do |row|
+        docs = source_parser.parse(row[:source])
+        docs.each do |doc|
           external_documents << {
-            'title' => title.empty? ? "Untitled" : title,
-            'location' => location.empty? ? "example://no-url-available" : location.first
+            'title' => doc[:text] || "Untitled",
+            'location' => doc[:url] ||"example://no-url-available"
           }
         end
       end
@@ -129,30 +130,6 @@ class AgentConverter < Converter
       external_documents
     end
 
-    def parse_source(s)
-      result = []
-
-      while (nexturl = s.index(/https?:\/\//))
-        entry = []
-
-        entry << s[0..nexturl - 1]
-        s = s[nexturl..-1]
-        end_of_url = s.index(/\s/) || -1
-
-        entry << s[0..end_of_url].gsub(/\.+$/, '')
-        s = s[end_of_url..-1]
-
-        if s[0..11] =~ /(accessed|retrieved)/i
-          end_of_accessed_note = s.index('.') || -1
-          entry << s[0..end_of_accessed_note]
-          s = s[end_of_accessed_note..-1]
-        end
-
-        result << entry.map {|s| s.gsub(/^[\r\n\., ]+/, '').gsub(/[\r\n\., ]+$/, '')}
-      end
-
-      result
-    end
   end
 
   class AgentCorporateEntity < BaseAgent
