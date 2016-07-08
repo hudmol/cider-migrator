@@ -50,3 +50,5 @@ update authority_name set name = 'WATCH OUT: made up by importer' where name is 
 select * from geographic_term where name is null;
 select * from topic_term where name is null;
 
+-- FAAASTER
+create index do_pid_idx on digital_object (pid(50));
