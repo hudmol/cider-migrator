@@ -115,7 +115,7 @@ class DigitalObjectConverter < Converter
     # The checksum might have been too large to fit in the ArchivesSpace
     # checksum field (for example, if it's actually a list of checksums of
     # multiple files).  Store it in a note instead.
-    if digital_object[:checksum] && digital_object[:checksum] >= 255
+    if digital_object[:checksum] && digital_object[:checksum].length >= 255
       notes << digital_object[:checksum]
     end
 
