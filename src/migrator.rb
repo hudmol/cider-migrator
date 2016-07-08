@@ -137,6 +137,8 @@ def main
 
   aspace = ArchivesSpaceImport.new($repo_id)
 
+  aspace.create_repo("tufts", "Tufts ArchivesSpace")
+
   Log.info("Converting records...")
 
   exported_file = File.join($basedir, "exported_#{Time.now.to_i}.json")
