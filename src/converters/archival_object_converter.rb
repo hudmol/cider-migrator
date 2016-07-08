@@ -79,6 +79,12 @@ class ArchivalObjectConverter < Converter
     end
   end
 
+  class Subseries < ArchivalObject
+    def from_object(object, db, store, tree_store)
+      store.put_archival_object(super.merge({'level' => 'subseries'}))
+    end
+  end
+
 
   class Item < ArchivalObject
     def from_object(object, db, store, tree_store)
@@ -202,7 +208,12 @@ class ArchivalObjectConverter < Converter
     if object[:parent].nil?
       Collection.new
     elsif db[:series].where(:id => object[:id]).count > 0
-      Series.new
+      # If we're nested within another Series, this is actually a Subseries
+      if db[:object].filter(:object__id => object[:id]).join(:series, :series__id => :object__parent).count > 0
+        Subseries.new
+      else
+        Series.new
+      end
     else
       Item.new
     end
