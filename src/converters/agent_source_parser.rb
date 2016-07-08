@@ -58,6 +58,16 @@ class AgentSourceParser
     s
   end
 
+  def trim_to_nil(s)
+    result = s.strip
+
+    if result.empty?
+      nil
+    else
+      result
+    end
+  end
+
   # entry = <url> <text>
   #       | <text> <url> [<accessed note>]
   def parse(s)
@@ -70,7 +80,7 @@ class AgentSourceParser
     while !words.empty?
       if words[0] =~ URL_REGEX
         # <url> <text>
-        result << {url: read_url(words), text: read_text(words)}
+        result << {url: read_url(words), text: trim_to_nil(read_text(words))}
       else
         # <text> <url> [<accessed note>]
         entry = read_text(words)
@@ -80,7 +90,7 @@ class AgentSourceParser
           entry += ' ' + accessed_note
         end
 
-        result << {url: url, text: entry}
+        result << {url: url, text: trim_to_nil(entry)}
       end
     end
 
