@@ -1,7 +1,10 @@
 class ArchivalObjectConverter < Converter
 
+  CPUS_TO_MELT = 8
+
   class ArchivalObject
-    def from_object(object, db, store, tree_store)
+
+    def from_object(object, db)
       record = {
         'jsonmodel_type' => 'archival_object',
         'title' => object[:title],
@@ -21,7 +24,7 @@ class ArchivalObjectConverter < Converter
       # numbers than it (positions are zero-indexed).
       record['position'] = db[:object].filter(:parent => object[:parent]).where { number < object[:number] }.count
 
-      tree_store.record_parent(:child => record['id'], :parent => parent_id)
+      record_parent(:child => record['id'], :parent => parent_id)
 
       unless parent[:parent].nil?
         record['parent'] = {'ref' => Migrator.promise('archival_object_uri', parent_id)}
@@ -34,7 +37,14 @@ class ArchivalObjectConverter < Converter
       record
     end
 
+    attr_reader :parent_info
+
     private
+
+    def record_parent(args)
+      @parent_info ||= []
+      parent_info << args
+    end
 
     def build_audit_info(object, db)
       audit_fields = {}
@@ -65,34 +75,35 @@ class ArchivalObjectConverter < Converter
 
 
   class Collection < ArchivalObject
-    def from_object(object, db, store, tree_store)
+    def from_object(object, db)
       # we don't need this object because the resource mapper is taking care of it
-      # just remember the collection_id for the tree store
-      tree_store.record_parent(:child => object[:number], :collection => object[:number])
+      # just remember the collection_id.
+      record_parent(:child => object[:number], :collection => object[:number])
+      nil
     end
   end
 
 
   class Series < ArchivalObject
-    def from_object(object, db, store, tree_store)
-      store.put_archival_object(super.merge({'level' => 'series'}))
+    def from_object(object, db)
+      super.merge({'level' => 'series'})
     end
   end
 
   class Subseries < ArchivalObject
-    def from_object(object, db, store, tree_store)
-      store.put_archival_object(super.merge({'level' => 'subseries'}))
+    def from_object(object, db)
+      super.merge({'level' => 'subseries'})
     end
   end
 
 
   class Item < ArchivalObject
-    def from_object(object, db, store, tree_store)
-      store.put_archival_object(super.merge({
-        'level' => find_level(object, db),
-        'subjects' => build_subjects(object, db),
-        'instances' => build_instances(object, db)
-      }))
+    def from_object(object, db)
+      super.merge({
+                    'level' => find_level(object, db),
+                    'subjects' => build_subjects(object, db),
+                    'instances' => build_instances(object, db)
+                  })
     end
 
     def find_level(object, db)
@@ -220,12 +231,44 @@ class ArchivalObjectConverter < Converter
   end
 
   def call(store, tree_store)
-    Log.info("Going to process #{db[:object].count} archival_object records")
+    Log.info("Going to process #{db[:object].count} archival_object records using #{CPUS_TO_MELT} threads")
 
-    db[:object].each do |object|
-      record_type(object).from_object(object, db, store, tree_store)
+    # Build up a big list of the IDs we'll process
+    id_list = db[:object].select(:id).map {|row| row[:id]}
+
+    # Group our work into chunks of records, with one chunk allocated to each thread
+    id_list.each_slice(10).each_slice(CPUS_TO_MELT) do |workset|
+      threads = []
+      workset.each do |ids|
+        threads << Thread.new do
+          # Each thread grabs its list of objects, transforms them and returns
+          # the resulting record and the AO object it used (which carries the
+          # parent/child info)
+          objects = db[:object].filter(:id => ids)
+
+          objects.map do |object|
+            ao = record_type(object)
+            record = ao.from_object(object, db)
+
+            [record, ao]
+          end
+        end
+      end
+
+      # Back in the main thread, gather up the results from our threads and
+      # write them out to our storage.
+      threads.each do |thread|
+        thread.value.each do |record, ao|
+          Array(ao.parent_info).each do |info|
+            tree_store.record_parent(info)
+          end
+
+          store.put_archival_object(record) if record
+        end
+      end
     end
   end
+
 end
 
 #
