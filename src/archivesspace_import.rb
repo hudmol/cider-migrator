@@ -17,7 +17,7 @@ class ArchivesSpaceImport
   end
 
   def batch_import(file)
-    JSONModel::HTTP.post_json_file(URI.join(JSONModel::HTTP.backend_url, "/repositories/#{@repo_id}/batch_imports"),
+    JSONModel::HTTP.post_json_file(URI.join(JSONModel::HTTP.backend_url, "/repositories/#{@repo_id}/batch_imports?skip_results=true"),
                                    file) do |response|
       response.read_body do |chunk|
         Log.info(chunk)
