@@ -75,7 +75,7 @@ class Migrator
       store = MigrationStore.new(store_dir)
       tree_store = TreeStore.new(store)
 
-      chatty("Extracting Agent records from CIDER RCRs", store, tree_store) do
+      chatty("Extracting Agent records from CIDER RCRs and authorized names", store, tree_store) do
         AgentConverter.new(@cider_db).call(store)
       end
 

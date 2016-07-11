@@ -1,10 +1,12 @@
+require 'digest/sha1'
+
 require_relative 'agent_source_parser'
 
 class AgentConverter < Converter
   # Build up our agent record pulling in specific behaviour from our
   # subclasses as needed.
   class BaseAgent
-    def from_record_context(record_context, db, store)
+    def from_record_context(record_context, db, store, registry)
       primary_name = build_name(record_context[:name_entry]).merge('authorized' => true)
 
       alternate_names = db[:record_context_alternate_name].filter(:record_context => record_context[:id]).map {|alternate_name|
@@ -18,6 +20,15 @@ class AgentConverter < Converter
         'notes' => build_notes(record_context),
         'related_agents' => build_related_agents(record_context, db),
         'external_documents' => build_external_documents(record_context, db),
+      }
+    end
+
+    def from_authority_name(authority_name, db, store, registry)
+      primary_name = build_name(authority_name[:name]).merge('authorized' => true)
+
+      {
+        'id' => "authority_name:#{authority_name[:id]}",
+        'names' => [primary_name],
       }
     end
 
@@ -144,10 +155,26 @@ class AgentConverter < Converter
   end
 
   class AgentCorporateEntity < BaseAgent
-    def from_record_context(record_context, db, store)
-      store.put_agent_corporate_entity(super.merge({
-                                                     'jsonmodel_type' => 'agent_corporate_entity',
-                                                   }))
+    def from_record_context(record_context, db, store, agent_registry)
+      agent = super.merge({
+                            'jsonmodel_type' => 'agent_corporate_entity',
+                          })
+      store.put_agent_corporate_entity(agent)
+      agent_registry.record_agent(agent)
+    end
+
+    def from_authority_name(authority_name, db, store, registry)
+      agent = super.merge({
+                            'jsonmodel_type' => 'agent_corporate_entity',
+                          })
+
+      if (uri = registry.find_existing(agent))
+        # We'll reuse it
+      else
+        uri = store.put_agent_corporate_entity(agent)
+      end
+
+      store.deliver_promise('authority_name_agent_uri', authority_name[:id].to_s, uri)
     end
 
     def build_name(name_string)
@@ -200,10 +227,12 @@ class AgentConverter < Converter
   end
 
   class AgentFamily < BaseAgent
-    def from_record_context(record_context, db, store)
-      store.put_agent_family(super.merge({
-                                           'jsonmodel_type' => 'agent_family',
-                                         }))
+    def from_record_context(record_context, db, store, agent_registry)
+      agent = super.merge({
+                            'jsonmodel_type' => 'agent_family',
+                          })
+      store.put_agent_family(agent)
+      agent_registry.record_agent(agent)
     end
 
     def build_name(name_string)
@@ -234,10 +263,26 @@ class AgentConverter < Converter
   end
 
   class AgentPerson < BaseAgent
-    def from_record_context(record_context, db, store)
-      store.put_agent_person(super.merge({
-                                           'jsonmodel_type' => 'agent_person',
-                                         }))
+    def from_record_context(record_context, db, store, agent_registry)
+      agent = super.merge({
+                            'jsonmodel_type' => 'agent_person',
+                          })
+      store.put_agent_person(agent)
+      agent_registry.record_agent(agent)
+    end
+
+    def from_authority_name(authority_name, db, store, registry)
+      agent = super.merge({
+                            'jsonmodel_type' => 'agent_person',
+                          })
+
+      if (uri = registry.find_existing(agent))
+        # We'll reuse it
+      else
+        uri = store.put_agent_person(agent)
+      end
+
+      store.deliver_promise('authority_name_agent_uri', authority_name[:id].to_s, uri)
     end
 
     def build_name(name_string)
@@ -280,19 +325,87 @@ class AgentConverter < Converter
 
   end
 
+  # Some agents overlap between the RCR tables and the authority_name tables.  Link those agents together
+
+  class AgentRegistry
+
+    def initialize
+      @seen_agents = {}
+    end
+
+    def record_agent(agent)
+      @seen_agents[hash_for(agent)] = agent.fetch('uri')
+    end
+
+    def find_existing(agent)
+      result = @seen_agents.fetch(hash_for(agent), nil)
+
+      if result
+        Log.info("Found existing RCR agent for #{agent.inspect} - #{result}")
+      end
+
+      result
+    end
+
+    private
+
+    def hash_for(agent)
+      key = {
+        :jsonmodel_type => agent['jsonmodel_type'],
+        :authorized_name => agent['names'].find {|name| name['authorized']}
+      }
+
+      raise if key.values.include?(nil)
+
+      Digest::SHA1.hexdigest(key.to_json)
+    end
+
+  end
+
   RC_TYPE_TO_AGENT_TYPE = {
     1 => AgentCorporateEntity.new,
     2 => AgentFamily.new,
     3 => AgentPerson.new,
   }
 
+  def person?(name)
+    if name =~ /[0-9]{4}/
+      # life dates
+      return true
+    end
+
+    bits = name.split(',')
+
+    if bits.length > 2
+      false
+    elsif bits.length <= 1
+      false
+    elsif bits[0].include?(" ")
+      false
+    elsif bits[1].split(" ").length > 3
+      false
+    else
+      true
+    end
+  end
+
   def call(store)
     Log.info("Going to process #{db[:record_context].count} agent records")
+
+    registry = AgentRegistry.new
 
     db[:record_context].each do |record_context|
       agent_type = RC_TYPE_TO_AGENT_TYPE.fetch(record_context[:rc_type])
 
-      agent_type.from_record_context(record_context, db, store)
+      agent_type.from_record_context(record_context, db, store, registry)
+    end
+
+    db[:authority_name].each do |authority|
+      if person?(authority[:name])
+        AgentPerson.new.from_authority_name(authority, db, store, registry)
+      else
+        AgentCorporateEntity.new.from_authority_name(authority, db, store, registry)
+      end
     end
   end
 end

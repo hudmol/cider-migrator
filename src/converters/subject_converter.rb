@@ -22,14 +22,12 @@ class SubjectConverter < Converter
 
     TERM_TYPE = {
       :collection_subject => 'uniform_title',
-      :authority_name => 'uniform_title',
       :geographic_term => 'geographic',
       :topic_term => 'topical'
     }
 
     TERM_FIELD = {
       :collection_subject => :subject,
-      :authority_name => :name,
       :geographic_term => :name,
       :topic_term => :name
     }
@@ -37,7 +35,6 @@ class SubjectConverter < Converter
     def build_terms(subjecty_thing, type)
       terms = []
 
-      # there is one authority_name whose name is null, hence the UNKNOWN
       terms << {
         'jsonmodel_type' => 'term',
         'term' => subjecty_thing[TERM_FIELD[type]] || "UNKNOWN",
@@ -66,7 +63,7 @@ class SubjectConverter < Converter
     Log.info("Creating Vocabulary record out of thin air")
     Vocabulary.new.from_thin_air(store)
 
-    [:collection_subject, :authority_name, :geographic_term, :topic_term].each do |type|
+    [:collection_subject, :geographic_term, :topic_term].each do |type|
       Log.info("Going to process #{db[type].count} #{type.to_s} records")
       db[type].each do |row|
         Subject.new.from_subjecty_thing(row, type, db, store)
