@@ -285,12 +285,12 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'relatedmaterial',
-          'subnotes' => [
-            {
+          'subnotes' => content.map {|note|
+              {
               'jsonmodel_type' => 'note_text',
-              'content' => content,
+              'content' => note,
+              }
             }
-          ]
         }
       end
 

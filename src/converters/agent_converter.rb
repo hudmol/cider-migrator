@@ -1,9 +1,6 @@
 require_relative 'agent_source_parser'
 
 class AgentConverter < Converter
-  # FIXME We'll want to move this stuff into its own "converter" file at
-  # some point.
-
   # Build up our agent record pulling in specific behaviour from our
   # subclasses as needed.
   class BaseAgent
@@ -117,17 +114,31 @@ class AgentConverter < Converter
 
       source_parser = AgentSourceParser.new
 
+      url_count = 1
       rows.each do |row|
         docs = source_parser.parse(row[:source])
         docs.each do |doc|
           external_documents << {
             'title' => doc[:text] || "Untitled",
-            'location' => doc[:url] ||"example://no-url-available"
+            'location' => doc[:url] || suffix_string("example://no-url-available", url_count)
           }
+
+          url_count += 1
         end
       end
 
       external_documents
+    end
+
+    # It turns out <titles, locations> must be unique within the external
+    # document list.  Suffix our URLs to ensure this.
+    def suffix_string(base, count)
+      if count == 1
+        # no suffix for the first one
+        base
+      else
+        base + "-#{count}"
+      end
     end
 
   end

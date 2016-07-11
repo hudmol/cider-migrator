@@ -137,6 +137,8 @@ def main
 
   aspace = ArchivesSpaceImport.new($repo_id)
 
+  aspace.create_repo("tufts", "Tufts ArchivesSpace")
+
   Log.info("Converting records...")
 
   exported_file = File.join($basedir, "exported_#{Time.now.to_i}.json")
@@ -144,7 +146,7 @@ def main
   # Don't mess with timezones
   Sequel.default_timezone = nil
 
-  Sequel.connect($cider_url) do |db|
+  Sequel.connect($cider_url, :max_connections => 16) do |db|
     File.open(exported_file, "w") do |fh|
       Migrator.new(db, fh).call
     end
