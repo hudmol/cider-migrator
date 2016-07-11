@@ -6,7 +6,7 @@ class AgentConverter < Converter
   # Build up our agent record pulling in specific behaviour from our
   # subclasses as needed.
   class BaseAgent
-    def from_record_context(record_context, db, store, registry)
+    def from_record_context(record_context, db, store, agent_registry)
       primary_name = build_name(record_context[:name_entry]).merge('authorized' => true)
 
       alternate_names = db[:record_context_alternate_name].filter(:record_context => record_context[:id]).map {|alternate_name|
@@ -23,7 +23,7 @@ class AgentConverter < Converter
       }
     end
 
-    def from_authority_name(authority_name, db, store, registry)
+    def from_authority_name(authority_name, db, store, agent_registry)
       primary_name = build_name(authority_name[:name]).merge('authorized' => true)
 
       {
@@ -163,15 +163,16 @@ class AgentConverter < Converter
       agent_registry.record_agent(agent)
     end
 
-    def from_authority_name(authority_name, db, store, registry)
+    def from_authority_name(authority_name, db, store, agent_registry)
       agent = super.merge({
                             'jsonmodel_type' => 'agent_corporate_entity',
                           })
 
-      if (uri = registry.find_existing(agent))
+      if (uri = agent_registry.find_existing(agent))
         # We'll reuse it
       else
         uri = store.put_agent_corporate_entity(agent)
+        agent_registry.record_agent(agent)
       end
 
       store.deliver_promise('authority_name_agent_uri', authority_name[:id].to_s, uri)
@@ -271,15 +272,16 @@ class AgentConverter < Converter
       agent_registry.record_agent(agent)
     end
 
-    def from_authority_name(authority_name, db, store, registry)
+    def from_authority_name(authority_name, db, store, agent_registry)
       agent = super.merge({
                             'jsonmodel_type' => 'agent_person',
                           })
 
-      if (uri = registry.find_existing(agent))
+      if (uri = agent_registry.find_existing(agent))
         # We'll reuse it
       else
         uri = store.put_agent_person(agent)
+        agent_registry.record_agent(agent)
       end
 
       store.deliver_promise('authority_name_agent_uri', authority_name[:id].to_s, uri)
@@ -392,19 +394,19 @@ class AgentConverter < Converter
   def call(store)
     Log.info("Going to process #{db[:record_context].count} agent records")
 
-    registry = AgentRegistry.new
+    agent_registry = AgentRegistry.new
 
     db[:record_context].each do |record_context|
       agent_type = RC_TYPE_TO_AGENT_TYPE.fetch(record_context[:rc_type])
 
-      agent_type.from_record_context(record_context, db, store, registry)
+      agent_type.from_record_context(record_context, db, store, agent_registry)
     end
 
     db[:authority_name].each do |authority|
       if person?(authority[:name])
-        AgentPerson.new.from_authority_name(authority, db, store, registry)
+        AgentPerson.new.from_authority_name(authority, db, store, agent_registry)
       else
-        AgentCorporateEntity.new.from_authority_name(authority, db, store, registry)
+        AgentCorporateEntity.new.from_authority_name(authority, db, store, agent_registry)
       end
     end
   end
