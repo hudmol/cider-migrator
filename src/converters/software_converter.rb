@@ -23,7 +23,7 @@ class SoftwareConverter < Converter
       'names' => [{
         'sort_name_auto_generate' => true,
         'jsonmodel_type' => 'name_software',
-        'software_name' => application[:name],
+        'software_name' => application[:function] + " - " + application[:name],
         'source' => 'cider',
       }],
       'notes' => [{
