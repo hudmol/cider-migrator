@@ -185,8 +185,20 @@ class DigitalObjectConverter < Converter
   end
 
   def extract_linked_agents(object, item, digital_object, db)
-    # FIXME from Creators, implies need to import all old users as well?
-    []
+    begin
+      creator = db[:log].
+        filter(:audit_trail => object[:audit_trail], :action => 'create').
+        order(:id).select(:staff).first.
+        fetch(:staff)
+
+      [{
+         'role' => 'creator',
+         'ref' => Migrator.promise('staff_uri', creator.to_s),
+       }]
+    rescue
+      Log.warn("Digital object doesn't have a creator: #{digital_object[:id]}. Skipping linked agent for creator role.")
+      []
+    end
   end
 
   def extract_dates(object, item, digital_object, db)
