@@ -6,17 +6,21 @@ class DigitalObjectConverter < Converter
     Log.info("Going to process #{db[:digital_object].count} digital object records")
 
     db[:digital_object].each do |digital_object|
-      store.put_digital_object(build_from_digital_object(digital_object, store))
+      item = db[:item][:id => digital_object[:item]]
+      object = db[:object][:id => item[:id]]
+
+      store.put_digital_object(build_from_digital_object(object, item, digital_object, store))
+
+      build_events(object, item, digital_object).each do |event|
+        store.put_event(event)
+      end
     end
   end
 
   private
 
-  def build_from_digital_object(digital_object, store)
-    item = db[:item][:id => digital_object[:item]]
-    object = db[:object][:id => item[:id]]
-
-    record = {
+  def build_from_digital_object(object, item, digital_object, store)
+    {
       'id' => digital_object[:id].to_s,
       'digital_object_id' => extract_digital_object_id(object, item, digital_object, db),
       'level' => extract_level(object, item, digital_object, db),
@@ -30,15 +34,6 @@ class DigitalObjectConverter < Converter
       'notes' => extract_notes(object, item, digital_object, db),
       'user_defined' => extract_user_defined(object, item, digital_object, db),
     }.merge(extract_audit_info(object, db))
-
-    # FIXME Need to generate events:
-    # CATALOGUED EVENT 'cataloged_date' => nil, #File Creation Date
-    #                  'cataloged_note' => Digital Objects Notes
-    # PROSESSED EVENT 'processed_date' => nil, #Stabilization - date
-    #                 'processors' => nil, #Stabilization - by
-    # RIGHTS_TRANSFERRED EVENT: 'rights_transferred' => nil, #Digital Objects Rights
-
-    record
   end
 
 
@@ -97,15 +92,9 @@ class DigitalObjectConverter < Converter
         digital_object[:pid]
       end
     else
-      Log.warn("Digital object doesn't have a pid: #{digital_object[:id]}.  Using object[:number] for digital_object_id instead.")
+      Log.warn("Digital object doesn't have a pid: #{digital_object[:id]}. Generating a random value for digital_object_id instead.")
 
-      if db[:digital_object].where(:item => object[:id]).all.length > 1
-        # FIXME these items have multiple digital objects perhaps implying digital object components
-        # just fudge some unique digital_object_ids for the moment
-        "#{object[:number]} [#{digital_object[:id]}]"
-      else
-        object[:number]
-      end
+      SecureRandom.hex
     end
   end
 
@@ -196,8 +185,20 @@ class DigitalObjectConverter < Converter
   end
 
   def extract_linked_agents(object, item, digital_object, db)
-    # FIXME from Creators, implies need to import all old users as well?
-    []
+    begin
+      creator = db[:log].
+        filter(:audit_trail => object[:audit_trail], :action => 'create').
+        order(:id).select(:staff).first.
+        fetch(:staff)
+
+      [{
+         'role' => 'creator',
+         'ref' => Migrator.promise('staff_uri', creator.to_s),
+       }]
+    rescue
+      Log.warn("Digital object doesn't have a creator: #{digital_object[:id]}. Skipping linked agent for creator role.")
+      []
+    end
   end
 
   def extract_dates(object, item, digital_object, db)
@@ -230,9 +231,6 @@ class DigitalObjectConverter < Converter
 
     # TODO string_3 => Stabilization Applications Other
 
-    # text_1 => Stabilization Notes
-    user_defined['text_1'] = digital_object[:stabilization_notes]
-
     # text_2 => Digital Objects Original Filename
     user_defined['text_2'] = digital_object[:original_filename]
 
@@ -245,13 +243,6 @@ class DigitalObjectConverter < Converter
     if digital_object[:stabilization_procedure]
       stabilization_procedure = db[:stabilization_procedure][:id => digital_object[:stabilization_procedure]]
       user_defined['enum_3'] = "#{stabilization_procedure[:code]} #{stabilization_procedure[:name]}"
-    end
-
-    # enum_4 => Applications Media Image
-    if digital_object[:media_app]
-      media_app = db[:application][:id => digital_object[:media_app]]
-
-      user_defined['enum_4'] = media_app[:name]
     end
 
     user_defined
@@ -285,5 +276,93 @@ class DigitalObjectConverter < Converter
     end
 
     audit_fields
+  end
+
+
+  def build_events(object, item, digital_object)
+    events = []
+
+    # not all records have a 'created' log item,
+    # so just grab their first one...
+    create_timestamp = db[:log].
+      filter(:audit_trail => object[:audit_trail]).
+      order(:id).select(:timestamp).first.
+      fetch(:timestamp)
+
+    # processed event
+    if digital_object[:stabilized_by] && digital_object[:stabilized_procedure]
+      processed_event = {
+        'event_type' => 'processed',
+        'outcome_note' => digital_object[:stabilization_notes],
+        'linked_agents' => [{
+                              'ref' => Migrator.promise('staff_uri', digital_object[:stabilized_by].to_s),
+                              'role' => 'implementer',
+                            }],
+        'linked_records' => [{
+                               'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s),
+                               'role' => 'outcome',
+                             }]
+      }
+
+      if digital_object[:stabilization_date]
+        processed_event['date'] = {
+          'date_type' => 'single',
+          'label' => 'event',
+          'begin' => digital_object[:stabilization_date],
+        }
+      else
+        processed_event['timestamp'] = Utils.convert_timestamp_for_db(create_timestamp)
+      end
+
+      if digital_object['stabilized_procedure']
+        processed_event['linked_agents'] << {
+          'ref' => Migrator.promise('stabilization_procedure_uri', digital_object[:stabilized_procedure].to_s),
+          'role' => 'executing_program',
+        }
+      end
+
+      events << processed_event
+    end
+
+    # capture event
+    # Event type = capture; event date/time specifier = UTC;
+    # agent link role = executing program;
+    # agent = all software options currently in CIDER need to migrate as agents
+    if digital_object[:media_app]
+      events << {
+        'event_type' => 'capture',
+        'timestamp' => Utils.convert_timestamp_for_db(create_timestamp),
+        'linked_agents' => [{
+                              'ref' => Migrator.promise('application_uri', digital_object[:media_app].to_s),
+                              'role' => 'executing_program',
+                            }],
+        'linked_records' => [{
+                               'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s),
+                               'role' => 'outcome',
+                             }]
+
+      }
+    end
+
+    # Event type = virus check;
+    # event date/time specifier = UTC;
+    # agent link role = executing program;
+    # agent = all software options currently in CIDER need to migrate as agents
+    if digital_object[:virus_app]
+      events << {
+        'event_type' => 'virus_check',
+        'timestamp' => Utils.convert_timestamp_for_db(create_timestamp),
+        'linked_agents' => [{
+                              'ref' => Migrator.promise('application_uri', digital_object[:virus_app].to_s),
+                              'role' => 'executing_program',
+                            }],
+        'linked_records' => [{
+                              'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s),
+                              'role' => 'outcome',
+                             }]
+      }
+    end
+
+    events
   end
 end

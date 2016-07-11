@@ -74,7 +74,7 @@ class Users
   def groups
     return @groups if @groups
 
-    @groups = JSONModel::HTTP.get_json("/repositories/2/groups")
+    @groups = JSONModel::HTTP.get_json("/repositories/#{$repo_id}/groups")
 
     @groups
   end

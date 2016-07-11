@@ -79,6 +79,14 @@ class Migrator
         AgentConverter.new(@cider_db).call(store)
       end
 
+      chatty("Extracting Agent Sofware records from CIDER Application table", store, tree_store) do
+        SoftwareConverter.new(@cider_db).call(store)
+      end
+
+      chatty("Extracting Agent records from CIDER Staff table", store, tree_store) do
+        StaffConverter.new(@cider_db).call(store)
+      end
+
       chatty("Extracting Subject records from various CIDER tables", store, tree_store) do
         SubjectConverter.new(@cider_db).call(store)
       end
