@@ -17,12 +17,15 @@ class MigrationStore
       :digital_object =>  MarshalStore.new(File.join(basedir, "digital_objects")),
       :event =>  MarshalStore.new(File.join(basedir, "events")),
       :agent_person_record_context => MarshalStore.new(File.join(basedir, "agent_person")),
+      :agent_person_staff => MarshalStore.new(File.join(basedir, "agent_person_staff")),
       # :agent_person_creator => MarshalStore.new(File.join(basedir, "agent_creator_people")),
       # :agent_person_acknowledger => MarshalStore.new(File.join(basedir, "agent_acknowledger_people")),
       :agent_corporate_entity_record_context => MarshalStore.new(File.join(basedir, "agent_corporate_entity")),
       # :agent_corporate_entity_contact => MarshalStore.new(File.join(basedir, "agent_corporate_entities_contact")),
       # :agent_corporate_entity_creator => MarshalStore.new(File.join(basedir, "agent_corporate_entities_creator")),
       :agent_family_record_context => MarshalStore.new(File.join(basedir, "agent_family")),
+      :agent_software_application => MarshalStore.new(File.join(basedir, "agent_software_application")),
+      :agent_software_stabilization_procedure => MarshalStore.new(File.join(basedir, "agent_software_stabilization_procedure")),
       :vocabulary =>  MarshalStore.new(File.join(basedir, "vocabularies")),
       :subject =>  MarshalStore.new(File.join(basedir, "subjects")),
     }
@@ -240,6 +243,17 @@ class MigrationStore
 
     if deliver_promise('subject_uri', record['id'], uri)
       put(:subject, record)
+    end
+  end
+
+
+  def put_agent_software(record, role = 'application')
+    uri = "/agents/software/import_#{SecureRandom.hex}"
+
+    if put(:"agent_software_#{role}", record)
+      store = @stores.fetch(:"agent_software_#{role}")
+
+      deliver_promise("#{role}_uri", record['id'], uri)
     end
   end
 
