@@ -254,6 +254,7 @@ class MigrationStore
 
   def put_agent_software(record, role = 'application')
     uri = "/agents/software/import_#{SecureRandom.hex}"
+    record['uri'] = uri
 
     if put(:"agent_software_#{role}", record)
       store = @stores.fetch(:"agent_software_#{role}")
