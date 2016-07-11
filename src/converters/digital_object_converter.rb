@@ -92,15 +92,9 @@ class DigitalObjectConverter < Converter
         digital_object[:pid]
       end
     else
-      Log.warn("Digital object doesn't have a pid: #{digital_object[:id]}.  Using object[:number] for digital_object_id instead.")
+      Log.warn("Digital object doesn't have a pid: #{digital_object[:id]}. Generating a random value for digital_object_id instead.")
 
-      if db[:digital_object].where(:item => object[:id]).all.length > 1
-        # FIXME these items have multiple digital objects perhaps implying digital object components
-        # just fudge some unique digital_object_ids for the moment
-        "#{object[:number]} [#{digital_object[:id]}]"
-      else
-        object[:number]
-      end
+      SecureRandom.hex
     end
   end
 
