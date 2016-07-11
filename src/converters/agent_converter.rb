@@ -352,7 +352,7 @@ class AgentConverter < Converter
     def hash_for(agent)
       key = {
         :jsonmodel_type => agent['jsonmodel_type'],
-        :authorized_name => agent['names'].find {|name| name['authorized']}
+        :authorized_name => agent['names'].find {|name| name['authorized']}.sort
       }
 
       raise if key.values.include?(nil)
