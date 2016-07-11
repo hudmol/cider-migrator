@@ -108,6 +108,8 @@ class MigrationStore
 
       true
     end
+
+    uri
   end
 
 
@@ -136,6 +138,7 @@ class MigrationStore
       true
     end
 
+    uri
   end
 
 
@@ -158,6 +161,8 @@ class MigrationStore
       # @agent_groups.record_agent(record, store)
       deliver_promise("#{role}_uri", original_id, uri)
     end
+
+    uri
   end
 
 

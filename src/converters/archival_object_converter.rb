@@ -102,7 +102,8 @@ class ArchivalObjectConverter < Converter
       super.merge({
                     'level' => find_level(object, db),
                     'subjects' => build_subjects(object, db),
-                    'instances' => build_instances(object, db)
+                    'instances' => build_instances(object, db),
+                    'linked_agents' => build_agent_links(object, db),
                   })
     end
 
@@ -121,10 +122,6 @@ class ArchivalObjectConverter < Converter
       # only items have these kinds of subjects
       subjects = []
 
-      db[:item_authority_name].where(:item => object[:id]).each do |row|
-        subjects << { 'ref' => Migrator.promise('subject_uri', "authority_name:#{row[:name]}") }
-      end
-
       db[:item_geographic_term].where(:item => object[:id]).each do |row|
         subjects << { 'ref' => Migrator.promise('subject_uri', "geographic_term:#{row[:term]}") }
       end
@@ -134,6 +131,23 @@ class ArchivalObjectConverter < Converter
       end
 
       subjects
+    end
+
+    def build_agent_links(object, db)
+      agent_links = []
+
+      db[:object]
+        .join(:item_authority_name, :item_authority_name__item => :object__id)
+        .filter(:item => object[:id]).each do |link|
+        role = (link[:role] == 'creator') ? 'creator' : 'subject'
+
+        agent_links << {
+          'role' => role,
+          'ref' => Migrator.promise('authority_name_agent_uri', link[:name].to_s)
+        }
+      end
+
+      agent_links
     end
 
     def build_container(class_object, db)
