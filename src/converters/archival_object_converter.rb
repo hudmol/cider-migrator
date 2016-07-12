@@ -113,8 +113,10 @@ class ArchivalObjectConverter < Converter
         "from object o, item i where o.id = i.id and o.number like '#{object[:number]}%'"
       result = db.fetch(dates_query).first
       if result[:date_from]
-        dates << Dates.range(result[:date_from], (result[:date_to] || result[:date_from_to])).merge({'date_type' => 'inclusive',
-                                                                                                     'label' => 'creation'})
+        from = [result[:date_from], result[:date_from_to], result[:date_to]].compact.min
+        to = [result[:date_from], result[:date_from_to], result[:date_to]].compact.max
+        dates << Dates.range(from, to).merge({'date_type' => 'inclusive',
+                                              'label' => 'creation'})
       end
 
       dates.compact!
