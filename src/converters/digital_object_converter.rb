@@ -278,7 +278,7 @@ class DigitalObjectConverter < Converter
       fetch(:timestamp)
 
     # processed event
-    if digital_object[:stabilized_by] && digital_object[:stabilized_procedure]
+    if digital_object[:stabilized_by]
       processed_event = {
         'event_type' => 'processed',
         'outcome_note' => digital_object[:stabilization_notes],
@@ -302,9 +302,9 @@ class DigitalObjectConverter < Converter
         processed_event['timestamp'] = Utils.convert_timestamp_for_db(create_timestamp)
       end
 
-      if digital_object['stabilized_procedure']
+      if digital_object[:stabilization_procedure]
         processed_event['linked_agents'] << {
-          'ref' => Migrator.promise('stabilization_procedure_uri', digital_object[:stabilized_procedure].to_s),
+          'ref' => Migrator.promise('stabilization_procedure_uri', digital_object[:stabilization_procedure].to_s),
           'role' => 'executing_program',
         }
       end
