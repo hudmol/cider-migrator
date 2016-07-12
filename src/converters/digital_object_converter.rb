@@ -209,40 +209,28 @@ class DigitalObjectConverter < Converter
   def extract_user_defined(object, item, digital_object, db)
     user_defined = {}
 
-    # string_1 => Digital Objects Location
+    # string_1 => Digital Objects Original Filename
+    user_defined['string_1'] = digital_object[:original_filename]
+
+    # text_1 => Digital Objects Location
     location = extract_location(digital_object, db)
-    if location[:barcode].length > 255
-      Log.warn("Digital object string_1 greater than 255 characters: #{digital_object[:id]}. Truncating.")
-    end
-    user_defined['string_1'] = location[:barcode][0..254]
+    user_defined['text_1'] = location[:barcode]
 
-    # string_2 => Relationships PID
-    relationships = db[:digital_object_relationship].where(:digital_object => digital_object[:id])
+    # text_2 => Relationships PID
+    relationships = db[:digital_object_relationship].
+                      join(:relationship_predicate, :relationship_predicate__id => :digital_object_relationship__predicate).
+                      where(:digital_object_relationship__digital_object => digital_object[:id]).
+                      select(:digital_object_relationship__pid, :relationship_predicate__predicate)
     if relationships.count > 0
-      pids = relationships.collect{|rel| rel[:pid]}.uniq.sort
-      pids = pids.join(", ")
-
-      if pids.length > 255
-        Log.warn("Digital object string_2 greater than 255 characters: #{digital_object[:id]}. Truncating.")
-      end
-
-      user_defined['string_2'] = pids[0..254]
+      pids = relationships.collect{|rel| "#{rel[:predicate]} #{rel[:pid]}" }.uniq.sort
+      user_defined['text_2'] = pids.join("; ")
     end
 
-    # TODO string_3 => Stabilization Applications Other
-
-    # text_2 => Digital Objects Original Filename
-    user_defined['text_2'] = digital_object[:original_filename]
-
-    # TODO enum_1 => Relationships
-
-    # TODO enum_2 => File Extension
-    # This is already handled in the file version
-
-    # enum_3 => Stabilization Procedure
-    if digital_object[:stabilization_procedure]
-      stabilization_procedure = db[:stabilization_procedure][:id => digital_object[:stabilization_procedure]]
-      user_defined['enum_3'] = "#{stabilization_procedure[:code]} #{stabilization_procedure[:name]}"
+    # text_3 => Other Applications
+    applications = db[:digital_object_application].where(:digital_object => digital_object[:id])
+    if applications.count > 0
+      application_names = applications.collect{|app| app[:application] }
+      user_defined['text_3'] = application_names.join("; ")
     end
 
     user_defined
