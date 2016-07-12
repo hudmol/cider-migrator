@@ -292,7 +292,7 @@ class DigitalObjectConverter < Converter
                              }]
       }
 
-      if digital_object[:stabilization_date]
+      if digital_object[:stabilization_date] && digital_object[:stabilization_date] != ""
         processed_event['date'] = {
           'date_type' => 'single',
           'label' => 'event',
