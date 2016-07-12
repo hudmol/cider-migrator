@@ -86,11 +86,44 @@ class ArchivalObjectConverter < Converter
 
   class Series < ArchivalObject
     def from_object(object, db)
-      super.merge({'level' => 'series'})
+      series = db[:series].where(:id => object[:id]).first
+
+      super.merge({
+        'level' => 'series',
+        'dates' => build_dates(object, series, db)
+      })
+    end
+
+    private
+
+    def build_dates(object, series, db)
+      dates = []
+
+      # bulk dates > date_type = bulk, date_label = creation
+      bulk_date = Dates.range(series[:bulk_date_from], series[:bulk_date_to])
+      if bulk_date
+        dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
+      end
+
+      # derived dates > date_type = inclusive, date_label = creation
+      # creation dates are derived. see:
+      # lib/CIDER/Schema/Result/ObjectWithDerivedFields
+      dates_query = "select min(i.item_date_from) as date_from, max(i.item_date_from) as date_from_to, " +
+        "max(i.item_date_to) as date_to " +
+        "from object o, item i where o.id = i.id and o.number like '#{object[:number]}%'"
+      result = db.fetch(dates_query).first
+      if result[:date_from]
+        dates << Dates.range(result[:date_from], (result[:date_to] || result[:date_from_to])).merge({'date_type' => 'inclusive',
+                                                                                                     'label' => 'creation'})
+      end
+
+      dates.compact!
+
+      dates
     end
   end
 
-  class Subseries < ArchivalObject
+  class Subseries < Series
     def from_object(object, db)
       super.merge({'level' => 'subseries'})
     end
@@ -243,6 +276,7 @@ class ArchivalObjectConverter < Converter
       Item.new
     end
   end
+
 
   def call(store, tree_store)
     Log.info("Going to process #{db[:object].count} archival_object records using #{CPUS_TO_MELT} threads")

@@ -73,10 +73,10 @@ class ResourceConverter < Converter
     def build_dates(collection, number, db)
       dates = []
 
-      # bulk dates > date_type = bulk, date_label = existence
+      # bulk dates > date_type = bulk, date_label = creation
       bulk_date = Dates.range(collection[:bulk_date_from], collection[:bulk_date_to])
       if bulk_date
-        dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'existence'})
+        dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
       end
 
       # derived dates > date_type = inclusive, date_label = creation
