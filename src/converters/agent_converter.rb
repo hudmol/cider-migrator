@@ -24,12 +24,36 @@ class AgentConverter < Converter
     end
 
     def from_authority_name(authority_name, db, store, agent_registry)
-      primary_name = build_name(authority_name[:name]).merge('authorized' => true)
+      name = authority_name[:name]
+      note = authority_name[:note]
 
-      {
+      # split anything in a name after a backwards or forwards slash
+      # e.g., /printer\author - into the notes field and out of the name,
+      # for both people and corporate entities
+      if name =~ /\\/
+        parts = name.split(/\\/)[0]
+        name = parts[0]
+        note = [parts[1..-1], note].flatten.compact.join("; ")
+      end
+
+      primary_name = build_name(name).merge('authorized' => true)
+
+      agent = {
         'id' => "authority_name:#{authority_name[:id]}",
         'names' => [primary_name],
       }
+
+      if note && note != ""
+        agent['notes'] = [{
+          'jsonmodel_type' => 'note_bioghist',
+          'subnotes' => [{
+            'jsonmodel_type' => 'note_text',
+            'content' => note
+          }]
+        }]
+      end
+
+      agent
     end
 
     private
@@ -370,7 +394,43 @@ class AgentConverter < Converter
     3 => AgentPerson.new,
   }
 
-  def person?(name)
+  def person?(name, note)
+    if note =~ /man|woman|male|female/i
+      # Anything with "man" "woman" "male" or "female" in the notes field is
+      # likely a person, not a corporate entity
+      return true
+    end
+
+    if note =~ /last name only|first name unknown/i
+      # "Last name only" and "first name unknown" are people
+      return true
+    end
+
+    if name =~ /congress/i
+      # Anything with the word "Congress" in the name (NOT the notes)
+      # is a corporate entity
+      return false
+    end
+
+    # Anything with "author" in the name or notes is likely a person
+    # (exceptions noted; make sure to limit to "author" or you'll accidentally
+    # get "authority" as well, and those should stay corporate)
+    if name =~ /authority/i || note =~ /authority/i
+      return false
+    end
+    if name =~ /author/i || note =~ /author/i
+      return true
+    end
+
+    # Anything with an ampersand standing alone ot the html encoding for an
+    # ampersand (&amp; ) is almost certainly a corporate entity
+    # (ex: Skidmore, Owings & Merrill). (Careful to limit to
+    # space-ampersand-space or &amp; or you'll also get the html encoding for
+    # special characters, like &#00E4;)
+    if name =~ /\s&\s|&amp;/
+      return false
+    end
+
     if name =~ /[0-9]{4}/
       # life dates
       return true
@@ -403,7 +463,7 @@ class AgentConverter < Converter
     end
 
     db[:authority_name].each do |authority|
-      if person?(authority[:name])
+      if person?(authority[:name], authority[:note])
         AgentPerson.new.from_authority_name(authority, db, store, agent_registry)
       else
         AgentCorporateEntity.new.from_authority_name(authority, db, store, agent_registry)
