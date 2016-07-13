@@ -31,7 +31,7 @@ class AgentConverter < Converter
       # e.g., /printer\author - into the notes field and out of the name,
       # for both people and corporate entities
       if name =~ /\\/
-        parts = name.split(/\\/)[0]
+        parts = name.split(/\\/)
         name = parts[0]
         note = [parts[1..-1], note].flatten.compact.join("; ")
       end
