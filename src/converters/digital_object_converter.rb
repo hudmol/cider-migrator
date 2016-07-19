@@ -216,15 +216,18 @@ class DigitalObjectConverter < Converter
     location = extract_location(digital_object, db)
     user_defined['text_1'] = location[:barcode]
 
+    # DISABLED AS WE DON'T NEED TO MIGRATE THESE ANYMORE
+    # https://www.pivotaltracker.com/story/show/121256939
+    #
     # text_2 => Relationships PID
-    relationships = db[:digital_object_relationship].
-                      join(:relationship_predicate, :relationship_predicate__id => :digital_object_relationship__predicate).
-                      where(:digital_object_relationship__digital_object => digital_object[:id]).
-                      select(:digital_object_relationship__pid, :relationship_predicate__predicate)
-    if relationships.count > 0
-      pids = relationships.collect{|rel| "#{rel[:predicate]} #{rel[:pid]}" }.uniq.sort
-      user_defined['text_2'] = pids.join("; ")
-    end
+    # relationships = db[:digital_object_relationship].
+    #                   join(:relationship_predicate, :relationship_predicate__id => :digital_object_relationship__predicate).
+    #                   where(:digital_object_relationship__digital_object => digital_object[:id]).
+    #                   select(:digital_object_relationship__pid, :relationship_predicate__predicate)
+    # if relationships.count > 0
+    #   pids = relationships.collect{|rel| "#{rel[:predicate]} #{rel[:pid]}" }.uniq.sort
+    #   user_defined['text_2'] = pids.join("; ")
+    # end
 
     # text_3 => Other Applications
     applications = db[:digital_object_application].where(:digital_object => digital_object[:id])
