@@ -182,7 +182,7 @@ class ResourceConverter < Converter
 
       # ok good. now for non-volume types
       db[:unit_type].where(:volume => nil).each do |unit_type|
-        group_by = unit_type[:name] == 'Digital object' ? 'referent_object' : 'location'
+        group_by = unit_type[:name] == 'Digital objects' ? 'referent_object' : 'location'
 
         count_query = "select count(distinct #{group_by}) as cnt " +
           "from object_location, unit_type, location " +
