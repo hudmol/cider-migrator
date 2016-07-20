@@ -75,6 +75,12 @@ class Migrator
       store = MigrationStore.new(store_dir)
       tree_store = TreeStore.new(store)
 
+      chatty("Create DCA staff agent", store, tree_store) do
+        agent = build_dca_staff_agent
+        uri = store.put_agent_person(agent)
+        store.deliver_promise('dca_staff_agent_uri', agent['id'], uri)
+      end
+
       chatty("Extracting Agent records from CIDER RCRs and authorized names", store, tree_store) do
         AgentConverter.new(@cider_db).call(store)
       end
@@ -135,6 +141,27 @@ class Migrator
     $stderr.puts("Bytes in tree_store: #{tree_store.byte_size}")
 
     Log.info("Finished: #{description}")
+  end
+
+  def build_dca_staff_agent
+    {
+      'id' => 'dca_staff',
+      'jsonmodel_type' => 'agent_person',
+      'names' => [{
+                    'sort_name_auto_generate' => true,
+                    'jsonmodel_type' => 'name_person',
+                    'primary_name' => 'DCA Staff',
+                    'name_order' => 'inverted',
+                    'source' => 'local',
+                  }],
+      'notes' => [{
+                    'jsonmodel_type' => 'note_bioghist',
+                    'subnotes' => [{
+                                     'jsonmodel_type' => 'note_text',
+                                     'content' => 'This is a dummy agent to allow creation of orphaned records'
+                                   }]
+                  }]
+    }
   end
 
 end

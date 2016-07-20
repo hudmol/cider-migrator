@@ -216,15 +216,18 @@ class DigitalObjectConverter < Converter
     location = extract_location(digital_object, db)
     user_defined['text_1'] = location[:barcode]
 
+    # DISABLED AS WE DON'T NEED TO MIGRATE THESE ANYMORE
+    # https://www.pivotaltracker.com/story/show/121256939
+    #
     # text_2 => Relationships PID
-    relationships = db[:digital_object_relationship].
-                      join(:relationship_predicate, :relationship_predicate__id => :digital_object_relationship__predicate).
-                      where(:digital_object_relationship__digital_object => digital_object[:id]).
-                      select(:digital_object_relationship__pid, :relationship_predicate__predicate)
-    if relationships.count > 0
-      pids = relationships.collect{|rel| "#{rel[:predicate]} #{rel[:pid]}" }.uniq.sort
-      user_defined['text_2'] = pids.join("; ")
-    end
+    # relationships = db[:digital_object_relationship].
+    #                   join(:relationship_predicate, :relationship_predicate__id => :digital_object_relationship__predicate).
+    #                   where(:digital_object_relationship__digital_object => digital_object[:id]).
+    #                   select(:digital_object_relationship__pid, :relationship_predicate__predicate)
+    # if relationships.count > 0
+    #   pids = relationships.collect{|rel| "#{rel[:predicate]} #{rel[:pid]}" }.uniq.sort
+    #   user_defined['text_2'] = pids.join("; ")
+    # end
 
     # text_3 => Other Applications
     applications = db[:digital_object_application].where(:digital_object => digital_object[:id])
@@ -278,39 +281,8 @@ class DigitalObjectConverter < Converter
       fetch(:timestamp)
 
     # processed event
-    if digital_object[:stabilized_by]
-      processed_event = {
-        'event_type' => 'processed',
-        'outcome_note' => digital_object[:stabilization_notes],
-        'linked_agents' => [{
-                              'ref' => Migrator.promise('staff_uri', digital_object[:stabilized_by].to_s),
-                              'role' => 'implementer',
-                            }],
-        'linked_records' => [{
-                               'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s),
-                               'role' => 'outcome',
-                             }]
-      }
-
-      if digital_object[:stabilization_date] && digital_object[:stabilization_date] != ""
-        processed_event['date'] = {
-          'date_type' => 'single',
-          'label' => 'event',
-          'begin' => digital_object[:stabilization_date],
-        }
-      else
-        processed_event['timestamp'] = Utils.convert_timestamp_for_db(create_timestamp)
-      end
-
-      if digital_object[:stabilization_procedure]
-        processed_event['linked_agents'] << {
-          'ref' => Migrator.promise('stabilization_procedure_uri', digital_object[:stabilization_procedure].to_s),
-          'role' => 'executing_program',
-        }
-      end
-
-      events << processed_event
-    end
+    processed_event = build_processed_event(digital_object, create_timestamp)
+    events << processed_event if processed_event
 
     # capture event
     # Event type = capture; event date/time specifier = UTC;
@@ -352,5 +324,63 @@ class DigitalObjectConverter < Converter
     end
 
     events
+  end
+
+
+  def build_processed_event(digital_object, create_timestamp)
+    # only build an event if digital object as a value for the following fields
+    required_fields = [:stabilized_by, :stabilization_notes, :stabilization_date, :stabilization_procedure]
+    if required_fields.all? {|attr| digital_object[attr].nil? || digital_object[attr] == ''}
+      return nil
+    end
+
+    processed_event = {
+      'event_type' => 'processed',
+      'linked_agents' => [],
+      'linked_records' => [{
+                             'ref' => Migrator.promise('digital_object_uri', digital_object[:id].to_s),
+                             'role' => 'outcome',
+                           }]
+    }
+
+    if digital_object[:stabilization_notes] && digital_object[:stabilization_notes] != ""
+      processed_event['outcome_note'] = digital_object[:stabilization_notes]
+    else
+      processed_event['outcome'] = 'pass'
+    end
+
+    if digital_object[:stabilization_date] && digital_object[:stabilization_date] != ""
+      processed_event['date'] = {
+        'date_type' => 'single',
+        'label' => 'event',
+        'begin' => digital_object[:stabilization_date],
+      }
+    else
+      processed_event['timestamp'] = Utils.convert_timestamp_for_db(create_timestamp)
+    end
+
+    if digital_object[:stabilized_by]
+      processed_event['linked_agents'] << {
+        'ref' => Migrator.promise('staff_uri', digital_object[:stabilized_by].to_s),
+        'role' => 'implementer',
+      }
+    end
+
+    if digital_object[:stabilization_procedure]
+      processed_event['linked_agents'] << {
+        'ref' => Migrator.promise('stabilization_procedure_uri', digital_object[:stabilization_procedure].to_s),
+        'role' => 'executing_program',
+      }
+    end
+
+    if processed_event['linked_agents'].empty?
+      # link to the DCA Staff agent so we don't lose any stabilization information
+      processed_event['linked_agents'] << {
+        'ref' => Migrator.promise('dca_staff_agent_uri', 'dca_staff'),
+        'role' => 'implementer',
+      }
+    end
+
+    processed_event
   end
 end
