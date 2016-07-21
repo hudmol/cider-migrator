@@ -145,7 +145,7 @@ class ArchivalObjectConverter < Converter
     def find_level(object, db)
       item = db[:item].where(:id => object[:id]).first
 
-      if item[:dc_type] == 1 || db[:container].filter(:item => object[:id]).exists?
+      if item[:dc_type] == 1 || db[:container].filter(:item => object[:id]).count > 0
         # If the DC type is 'collection' (or the type of the item is), we'll emit a file
         'file'
       else
