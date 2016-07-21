@@ -28,7 +28,6 @@ class DigitalObjectConverter < Converter
       'digital_object_type' => extract_digital_object_type(object, item, digital_object, db),
       'restrictions' => extract_restrictions(object, item, digital_object, db),
       'title' => object[:title],
-      'linked_agents' => extract_linked_agents(object, item, digital_object, db),
       'dates' => extract_dates(object, item, digital_object, db),
       'file_versions' => extract_file_versions(object, item, digital_object, db),
       'notes' => extract_notes(object, item, digital_object, db),
@@ -182,23 +181,6 @@ class DigitalObjectConverter < Converter
     location = extract_location(digital_object, db)
 
     location[:barcode] == 'data05'
-  end
-
-  def extract_linked_agents(object, item, digital_object, db)
-    begin
-      creator = db[:log].
-        filter(:audit_trail => object[:audit_trail], :action => 'create').
-        order(:id).select(:staff).first.
-        fetch(:staff)
-
-      [{
-         'role' => 'creator',
-         'ref' => Migrator.promise('staff_uri', creator.to_s),
-       }]
-    rescue
-      Log.warn("Digital object doesn't have a creator: #{digital_object[:id]}. Skipping linked agent for creator role.")
-      []
-    end
   end
 
   def extract_dates(object, item, digital_object, db)
