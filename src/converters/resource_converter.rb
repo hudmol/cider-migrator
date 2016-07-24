@@ -229,6 +229,7 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'arrangement',
+          'publish' => true,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
@@ -242,6 +243,7 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'custodhist',
+          'publish' => true,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
@@ -255,6 +257,7 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'processinfo',
+          'publish' => true,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
@@ -268,6 +271,7 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'scopecontent',
+          'publish' => true,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
@@ -285,6 +289,7 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'relatedmaterial',
+          'publish' => true,
           'subnotes' => content.map {|note|
               {
               'jsonmodel_type' => 'note_text',
@@ -302,6 +307,7 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_singlepart',
           'type' => 'langmaterial',
+          'publish' => true,
           'content' => content,
         }
       end

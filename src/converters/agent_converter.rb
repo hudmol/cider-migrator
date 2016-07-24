@@ -77,6 +77,7 @@ class AgentConverter < Converter
 
       bioghist = {
         'jsonmodel_type' => 'note_bioghist',
+        'publish' => true,
         'subnotes' => []
       }
 

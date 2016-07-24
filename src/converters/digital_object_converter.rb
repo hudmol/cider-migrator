@@ -114,6 +114,7 @@ class DigitalObjectConverter < Converter
     if !notes.empty?
       [{
         'jsonmodel_type' => 'note_digital_object',
+        'publish' => true,
         'type' => 'note',
         'content' => notes
       }]

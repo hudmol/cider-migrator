@@ -28,6 +28,7 @@ class SoftwareConverter < Converter
       }],
       'notes' => [{
         'jsonmodel_type' => 'note_bioghist',
+        'publish' => true,
         'label' => 'Function',
         'subnotes' => [{
           'jsonmodel_type' => 'note_text',
