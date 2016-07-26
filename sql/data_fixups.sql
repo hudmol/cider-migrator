@@ -39,16 +39,17 @@
 -- SUBJECTs
 
 -- in cider_20160527 there is an authority_name with a null name - AS needs a value here
-select * from authority_name where name is null;
+-- select * from authority_name where name is null;
 -- id = 24992
 -- unfortunately it is used:
-select o.number from object o, item_authority_name i where i.item = o.id and i.name = 24992;
+-- select o.number from object o, item_authority_name i where i.item = o.id and i.name = 24992;
 -- let's just give it a value for now:
-update authority_name set name = 'WATCH OUT: made up by importer' where name is null;
+-- update authority_name set name = 'WATCH OUT: made up by importer' where name is null;
+-- fixed in cider_20160720
 
 -- geographic_term and topic_term are fine:
-select * from geographic_term where name is null;
-select * from topic_term where name is null;
+-- select * from geographic_term where name is null;
+-- select * from topic_term where name is null;
 
 -- FAAASTER
 create index do_pid_idx on digital_object (pid(50));
