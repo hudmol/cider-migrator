@@ -105,19 +105,7 @@ class ArchivalObjectConverter < Converter
         dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
       end
 
-      # derived dates > date_type = inclusive, date_label = creation
-      # creation dates are derived. see:
-      # lib/CIDER/Schema/Result/ObjectWithDerivedFields
-      dates_query = "select min(i.item_date_from) as date_from, max(i.item_date_from) as date_from_to, " +
-        "max(i.item_date_to) as date_to " +
-        "from object o, item i where o.id = i.id and o.number like '#{object[:number]}%'"
-      result = db.fetch(dates_query).first
-      if result[:date_from]
-        from = [result[:date_from], result[:date_from_to], result[:date_to]].compact.min
-        to = [result[:date_from], result[:date_from_to], result[:date_to]].compact.max
-        dates << Dates.range(from, to).merge({'date_type' => 'inclusive',
-                                              'label' => 'creation'})
-      end
+      dates << Dates.enclosed_range(db, series[:id])
 
       dates.compact!
 
