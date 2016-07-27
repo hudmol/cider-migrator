@@ -307,6 +307,29 @@ class ResourceConverter < Converter
         }
       end
 
+
+      # note_bioghist from the text of the biog/hist note in
+      # the primary linked agent record.
+      primary_agent_hist_note = db[:collection_record_context]
+        .join(:record_context, :id => :collection_record_context__record_context)
+        .filter(:collection_record_context__collection => collection[:id])
+        .filter(:collection_record_context__is_primary => 1)
+        .filter(Sequel.~(:record_context__history => nil))
+        .select(:record_context__history).first
+
+      if primary_agent_hist_note
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'bioghist',
+          'publish' => true,
+          'subnotes' => [{
+                           'jsonmodel_type' => 'note_text',
+                           'publish' => true,
+                           'content' => primary_agent_hist_note[:history]
+                         }]
+        }
+      end
+
       notes
     end
 
