@@ -223,6 +223,7 @@ class ResourceConverter < Converter
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
+              'publish' => true,
               'content' => collection[:organization],
             }
           ]
@@ -237,6 +238,7 @@ class ResourceConverter < Converter
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
+              'publish' => true,
               'content' => collection[:history],
             }
           ],
@@ -251,6 +253,7 @@ class ResourceConverter < Converter
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
+              'publish' => true,
               'content' => collection[:processing_notes],
             }
           ]
@@ -265,6 +268,7 @@ class ResourceConverter < Converter
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
+              'publish' => true,
               'content' => collection[:scope],
             }
           ]
@@ -283,6 +287,7 @@ class ResourceConverter < Converter
           'subnotes' => content.map {|note|
               {
               'jsonmodel_type' => 'note_text',
+              'publish' => true,
               'content' => note,
               }
             }
