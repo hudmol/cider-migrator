@@ -156,11 +156,14 @@ class Migrator
                   }],
       'notes' => [{
                     'jsonmodel_type' => 'note_bioghist',
+                    'publish' => true,
                     'subnotes' => [{
                                      'jsonmodel_type' => 'note_text',
-                                     'content' => 'This is a dummy agent to allow creation of orphaned records'
+                                     'content' => 'This is a dummy agent to allow creation of orphaned records',
+                                     'publish' => true,
                                    }]
-                  }]
+                  }],
+      'publish' => false, # don't publish as this is a dummy agent
     }
   end
 

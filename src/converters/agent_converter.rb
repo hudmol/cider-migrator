@@ -20,6 +20,7 @@ class AgentConverter < Converter
         'notes' => build_notes(record_context),
         'related_agents' => build_related_agents(record_context, db),
         'external_documents' => build_external_documents(record_context, db),
+        'publish' => true,
       }
     end
 
@@ -41,14 +42,17 @@ class AgentConverter < Converter
       agent = {
         'id' => "authority_name:#{authority_name[:id]}",
         'names' => [primary_name],
+        'publish' => true,
       }
 
       if note && note != ""
         agent['notes'] = [{
           'jsonmodel_type' => 'note_bioghist',
+          'publish' => true,
           'subnotes' => [{
             'jsonmodel_type' => 'note_text',
-            'content' => note
+            'content' => note,
+            'publish' => true,
           }]
         }]
       end
@@ -85,6 +89,7 @@ class AgentConverter < Converter
         bioghist['subnotes'] << {
           'jsonmodel_type' => 'note_abstract',
           'content' => [record_context[:abstract]],
+          'publish' => true,
         }
       end
 
@@ -92,6 +97,7 @@ class AgentConverter < Converter
         bioghist['subnotes'] << {
           'jsonmodel_type' => 'note_text',
           'content' => record_context[:history],
+          'publish' => true,
         }
       end
 
@@ -99,6 +105,7 @@ class AgentConverter < Converter
         bioghist['subnotes'] << {
           'jsonmodel_type' => 'note_text',
           'content' => record_context[:structure_notes],
+          'publish' => true,
         }
       end
 
@@ -106,6 +113,7 @@ class AgentConverter < Converter
         bioghist['subnotes'] << {
           'jsonmodel_type' => 'note_text',
           'content' => record_context[:context],
+          'publish' => true,
         }
       end
 
