@@ -6,11 +6,6 @@ class SoftwareConverter < Converter
     db[:application].each do |application|
       store.put_agent_software(build_from_application(application), 'application')
     end
-
-    Log.info("Going to process #{db[:stabilization_procedure].count} stabilization_procedure records")
-    db[:stabilization_procedure].each do |procedure|
-      store.put_agent_software(build_from_stabilization_procedure(procedure), 'stabilization_procedure')
-    end
   end
 
   private
@@ -35,21 +30,6 @@ class SoftwareConverter < Converter
           'content' => application[:function],
         }]
       }]
-    }
-  end
-
-  def build_from_stabilization_procedure(procedure)
-    {
-      'id' => "#{procedure[:id]}",
-      'jsonmodel_type' => 'agent_software',
-      'agent_type' => 'agent_software',
-      'names' => [{
-                    'sort_name_auto_generate' => true,
-                    'jsonmodel_type' => 'name_software',
-                    'software_name' => procedure[:name],
-                    'authority_id' => procedure[:code],
-                    'source' => 'cider',
-                  }]
     }
   end
 end
