@@ -133,7 +133,11 @@ class ArchivalObjectConverter < Converter
     def find_level(object, db)
       item = db[:item].where(:id => object[:id]).first
 
-      if item[:dc_type] == 1 || db[:container].filter(:item => object[:id]).count > 0
+      if item[:is_group] == 1
+        # Groups always migrate as files
+        # See: https://www.pivotaltracker.com/n/projects/1592339
+        'file'
+      elsif item[:dc_type] == 1 || db[:container].filter(:item => object[:id]).count > 0
         # If the DC type is 'collection' (or the type of the item is), we'll emit a file
         'file'
       else
