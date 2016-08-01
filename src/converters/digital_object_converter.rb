@@ -350,10 +350,18 @@ class DigitalObjectConverter < Converter
     end
 
     if digital_object[:stabilization_procedure]
-      processed_event['linked_agents'] << {
-        'ref' => Migrator.promise('stabilization_procedure_uri', digital_object[:stabilization_procedure].to_s),
-        'role' => 'executing_program',
-      }
+      # stabilization_procedure can be either:
+      #   1	ACC-007	Digital Media Stabilization
+      #   2	ACC-009	Digital Network Stabilization
+      # if Digital Media Stabilization, then event type is Stabilized - Network Transfer
+      # if Digital Network Stabilization, then event type is Stabilized - Digital Media
+      if digital_object[:stabilization_procedure] == 1
+        processed_event['event_type'] = 'Stabilized - Digital Media'
+      elsif digital_object[:stabilization_procedure] == 2
+        processed_event['event_type'] = 'Stabilized - Network Transfer'
+      else
+        Log.warn("Digital object stabilization_procedure not handled: #{digital_object[:stabilization_procedure]}")
+      end
     end
 
     if processed_event['linked_agents'].empty?

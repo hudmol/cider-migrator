@@ -25,7 +25,6 @@ class MigrationStore
       # :agent_corporate_entity_creator => MarshalStore.new(File.join(basedir, "agent_corporate_entities_creator")),
       :agent_family_record_context => MarshalStore.new(File.join(basedir, "agent_family")),
       :agent_software_application => MarshalStore.new(File.join(basedir, "agent_software_application")),
-      :agent_software_stabilization_procedure => MarshalStore.new(File.join(basedir, "agent_software_stabilization_procedure")),
       :vocabulary =>  MarshalStore.new(File.join(basedir, "vocabularies")),
       :subject =>  MarshalStore.new(File.join(basedir, "subjects")),
     }
