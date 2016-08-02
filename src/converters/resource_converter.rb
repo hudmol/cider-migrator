@@ -51,7 +51,9 @@ class ResourceConverter < Converter
         'user_defined' => {
           'user_defined_boolean_1' => (collection[:documentation] == HAS_DOCUMENTATION),
         },
-        'restrictions' => (collection[:processing_status].to_i == 3),
+        'restrictions' => (db[:item]
+                            .filter(:id => db[:enclosure].filter(:ancestor => collection[:id]).select(:descendant))
+                            .where {Sequel.~(:restrictions => 1)}.count > 0),
         'level' => 'collection',
         'resource_type' => 'collection',
         # FIXME: there might be more than one language, what to do?
