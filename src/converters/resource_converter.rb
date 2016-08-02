@@ -49,7 +49,7 @@ class ResourceConverter < Converter
         # Force publish to true - https://www.pivotaltracker.com/story/show/123569271
         'publish' => true,
         'user_defined' => {
-          'user_defined_boolean_1' => (collection[:documentation] == HAS_DOCUMENTATION),
+          'boolean_1' => (collection[:documentation] == HAS_DOCUMENTATION),
         },
         'restrictions' => (collection[:processing_status].to_i == 3),
         'level' => 'collection',
