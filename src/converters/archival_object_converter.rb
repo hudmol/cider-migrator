@@ -11,10 +11,7 @@ class ArchivalObjectConverter < Converter
         'id' => object[:number],
         'component_id' => object[:number],
         'publish' => true,
-#        'restrictions' => (collection[:processing_status].to_i == 3),
         'language' => 'eng',
-#        'dates' => build_dates(collection),
-#        'notes' => build_notes(collection),
       }
 
       parent = db[:object].where(:id => object[:parent]).first
@@ -122,17 +119,19 @@ class ArchivalObjectConverter < Converter
 
   class Item < ArchivalObject
     def from_object(object, db)
+      item = db[:item].where(:id => object[:id]).first
+
       super.merge({
-                    'level' => find_level(object, db),
+                    'level' => find_level(object, item, db),
                     'subjects' => build_subjects(object, db),
                     'instances' => build_instances(object, db),
                     'linked_agents' => build_agent_links(object, db),
+                    'restrictions_apply' => item[:restrictions] > 1,
+                    'notes' => build_notes(object, item, db),
                   })
     end
 
-    def find_level(object, db)
-      item = db[:item].where(:id => object[:id]).first
-
+    def find_level(object, item, db)
       if item[:is_group] == 1
         # Groups always migrate as files
         # See: https://www.pivotaltracker.com/n/projects/1592339
@@ -216,6 +215,44 @@ class ArchivalObjectConverter < Converter
         'barcode_1' => location[:barcode]
       }
     end
+
+
+    def restriction_types(db)
+      return @restriction_types if @restriction_types
+
+      @restriction_types = {}
+      db[:item_restrictions].each { |ir| @restriction_types[ir[:id]] = ir[:description] }
+
+      @restriction_types
+    end
+
+
+    def build_notes(object, item, db)
+      notes = []
+
+      # restrictions == 1 is no restrictions
+      if item[:restrictions] > 1
+
+        content = restriction_types(db)[item[:restrictions]]
+
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'accessrestrict',
+          'publish' => true,
+          'subnotes' => [
+                         {
+                           'jsonmodel_type' => 'note_text',
+                           'publish' => true,
+                           'content' => content,
+                         }
+                        ]
+        }
+
+      end
+
+      notes
+    end
+
 
     CLASS_INSTANCE = {
       :container => 'mixed_materials', # ???
