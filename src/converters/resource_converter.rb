@@ -315,7 +315,7 @@ class ResourceConverter < Converter
       primary_agent_hist_note = db[:collection_record_context]
         .join(:record_context, :id => :collection_record_context__record_context)
         .filter(:collection_record_context__collection => collection[:id])
-        .filter(:collection_record_context__is_primary => 1)
+        .filter(:collection_record_context__is_primary => '1')
         .filter(Sequel.~(:record_context__history => nil))
         .select(:record_context__history).first
 
