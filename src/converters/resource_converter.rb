@@ -266,11 +266,11 @@ class ResourceConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'scopecontent',
-          'publish' => true,
+          'publish' => false,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
-              'publish' => true,
+              'publish' => false,
               'content' => collection[:scope],
             }
           ]
