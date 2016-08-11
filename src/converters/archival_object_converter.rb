@@ -1,3 +1,5 @@
+require_relative 'authority_name'
+
 class ArchivalObjectConverter < Converter
 
   CPUS_TO_MELT = 8
@@ -121,14 +123,17 @@ class ArchivalObjectConverter < Converter
     def from_object(object, db)
       item = db[:item].where(:id => object[:id]).first
 
-      super.merge({
+      record = super.merge({
                     'level' => find_level(object, item, db),
                     'subjects' => build_subjects(object, db),
                     'instances' => build_instances(object, db),
-                    'linked_agents' => build_agent_links(object, db),
                     'restrictions_apply' => item[:restrictions] > 1,
                     'notes' => build_notes(object, item, db),
                   })
+
+      merge_authority_name_links(record, object, item, db)
+
+      record
     end
 
     def find_level(object, item, db)
@@ -159,21 +164,33 @@ class ArchivalObjectConverter < Converter
       subjects
     end
 
-    def build_agent_links(object, db)
+    def merge_authority_name_links(record, object, item, db)
       agent_links = []
+      subjects = []
 
       db[:object]
         .join(:item_authority_name, :item_authority_name__item => :object__id)
-        .filter(:item => object[:id]).each do |link|
-        role = (link[:role] == 'creator') ? 'creator' : 'subject'
+        .join(:authority_name, :authority_name__id => :item_authority_name__name)
+        .filter(:item => object[:id])
+        .select(:authority_name__id, :authority_name__name, :item_authority_name__role)
+        .each do |link|
 
-        agent_links << {
-          'role' => role,
-          'ref' => Migrator.promise('authority_name_agent_uri', link[:name].to_s)
-        }
+        if AuthorityName.subject?(link[:name])
+          subjects << {
+            'ref' => Migrator.promise('authority_name_subject_uri', "authority_name:#{link[:id].to_s}")
+          }
+        else
+          role = (link[:role] == 'creator') ? 'creator' : 'subject'
+          agent_links << {
+            'role' => role,
+            'ref' => Migrator.promise('authority_name_agent_uri', link[:id].to_s)
+          }
+        end
       end
 
-      agent_links
+      record['subjects'] ||= []
+      record['subjects'].concat(subjects)
+      record['agent_links'] = agent_links
     end
 
     def build_container(class_object, db)
