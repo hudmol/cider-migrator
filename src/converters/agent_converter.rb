@@ -415,6 +415,12 @@ class AgentConverter < Converter
       return true
     end
 
+    if name =~ /\A(Department|Dept)/i
+      # Anything starting with Department or Dept
+      # is a corporate entity
+      return false
+    end
+
     if name =~ /congress/i
       # Anything with the word "Congress" in the name (NOT the notes)
       # is a corporate entity
@@ -460,6 +466,14 @@ class AgentConverter < Converter
     end
   end
 
+  def subject?(name)
+    if name =~ /--/
+      return true
+    end
+
+    false
+  end
+
   def call(store)
     Log.info("Going to process #{db[:record_context].count} agent records")
 
@@ -472,7 +486,9 @@ class AgentConverter < Converter
     end
 
     db[:authority_name].each do |authority|
-      if person?(authority[:name], authority[:note])
+      if subject?(authority[:name])
+        # do nothing! we only want agent-like items
+      elsif person?(authority[:name], authority[:note])
         AgentPerson.new.from_authority_name(authority, db, store, agent_registry)
       else
         AgentCorporateEntity.new.from_authority_name(authority, db, store, agent_registry)
