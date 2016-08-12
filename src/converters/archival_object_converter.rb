@@ -14,6 +14,7 @@ class ArchivalObjectConverter < Converter
         'component_id' => object[:number],
         'publish' => true,
         'language' => 'eng',
+        'dates' => build_dates(object, db)
       }
 
       parent = db[:object].where(:id => object[:parent]).first
@@ -70,6 +71,21 @@ class ArchivalObjectConverter < Converter
       audit_fields
     end
 
+
+    def build_dates(object, db)
+      dates = []
+
+      item = db[:item].where(:id => object[:id]).first
+
+      if item
+        dates << Dates.enclosed_range(db, item[:id])
+      end
+
+      dates.compact!
+
+      dates
+    end
+
   end
 
 
@@ -85,18 +101,17 @@ class ArchivalObjectConverter < Converter
 
   class Series < ArchivalObject
     def from_object(object, db)
-      series = db[:series].where(:id => object[:id]).first
-
       super.merge({
         'level' => 'series',
-        'dates' => build_dates(object, series, db)
       })
     end
 
     private
 
-    def build_dates(object, series, db)
-      dates = []
+    def build_dates(object, db)
+      dates = super
+
+      series = db[:series].where(:id => object[:id]).first
 
       # bulk dates > date_type = bulk, date_label = creation
       bulk_date = Dates.range(series[:bulk_date_from], series[:bulk_date_to])
@@ -104,12 +119,9 @@ class ArchivalObjectConverter < Converter
         dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
       end
 
-      dates << Dates.enclosed_range(db, series[:id])
-
-      dates.compact!
-
       dates
     end
+
   end
 
   class Subseries < Series
