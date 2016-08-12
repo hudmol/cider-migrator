@@ -1,3 +1,5 @@
+require_relative 'authority_name'
+
 class SubjectConverter < Converter
 
   class Subject
@@ -15,6 +17,8 @@ class SubjectConverter < Converter
       subject_json['scope_note'] = subjecty_thing[:note] if subjecty_thing[:note]
 
       store.put_subject(subject_json)
+
+      subject_json
     end
 
 
@@ -23,13 +27,15 @@ class SubjectConverter < Converter
     TERM_TYPE = {
       :collection_subject => 'uniform_title',
       :geographic_term => 'geographic',
-      :topic_term => 'topical'
+      :topic_term => 'topical',
+      :authority_name => 'uniform_title'
     }
 
     TERM_FIELD = {
       :collection_subject => :subject,
       :geographic_term => :name,
-      :topic_term => :name
+      :topic_term => :name,
+      :authority_name => :name,
     }
 
     def build_terms(subjecty_thing, type)
@@ -67,6 +73,15 @@ class SubjectConverter < Converter
       Log.info("Going to process #{db[type].count} #{type.to_s} records")
       db[type].each do |row|
         Subject.new.from_subjecty_thing(row, type, db, store)
+      end
+    end
+
+    # any authority name with '--' is a subject
+    Log.info("Going to process #{db[:authority_name].count} authority_name records")
+    db[:authority_name].each do |authority|
+      if AuthorityName.subject?(authority[:name])
+        subject = Subject.new.from_subjecty_thing(authority, :authority_name, db, store)
+        store.deliver_promise('authority_name_subject_uri', subject.fetch('id').to_s, subject.fetch('uri'))
       end
     end
 
