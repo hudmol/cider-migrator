@@ -137,7 +137,7 @@ class ArchivalObjectConverter < Converter
     end
 
     def find_level(object, item, db)
-      if item[:is_group] == 1
+      if item[:is_group] == '1' # is_group is an enum and comes through as a string
         # Groups always migrate as files
         # See: https://www.pivotaltracker.com/n/projects/1592339
         'file'
