@@ -105,6 +105,7 @@ class ArchivalObjectConverter < Converter
 
       record = super.merge({
         'level' => 'series',
+        'notes' => build_notes(object, db),
       })
 
       apply_restriction_fields(record, db)
@@ -158,6 +159,58 @@ class ArchivalObjectConverter < Converter
           record['restrictions_apply'] = true
         end
       end
+    end
+
+    def build_notes(object, db)
+      notes = []
+
+      if @series[:description]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'scopecontent',
+          'publish' => true,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => true,
+              'content' => @series[:description],
+            }
+          ]
+        }
+      end
+
+      if @series[:arrangement]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'arrangement',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => @series[:arrangement],
+            }
+          ]
+        }
+      end
+
+      if @series[:notes]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => 'Internal notes',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => @series[:notes],
+            }
+          ]
+        }
+      end
+
+      notes
     end
 
   end
