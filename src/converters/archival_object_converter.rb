@@ -101,9 +101,15 @@ class ArchivalObjectConverter < Converter
 
   class Series < ArchivalObject
     def from_object(object, db)
-      super.merge({
+      @series = db[:series].where(:id => object[:id]).first
+
+      record = super.merge({
         'level' => 'series',
       })
+
+      apply_restriction_fields(record, db)
+
+      record
     end
 
     private
@@ -111,15 +117,47 @@ class ArchivalObjectConverter < Converter
     def build_dates(object, db)
       dates = super
 
-      series = db[:series].where(:id => object[:id]).first
-
       # bulk dates > date_type = bulk, date_label = creation
-      bulk_date = Dates.range(series[:bulk_date_from], series[:bulk_date_to])
+      bulk_date = Dates.range(@series[:bulk_date_from], @series[:bulk_date_to])
       if bulk_date
         dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
       end
 
       dates
+    end
+
+
+    def apply_restriction_fields(record, db)
+      # derive the restrictions for the series
+
+      restrictions = db[:item]
+        .join(:item_restrictions, :item_restrictions__id, :item__restrictions)
+        .filter(:item__id => db[:enclosure].filter(:ancestor => @series[:id]))
+        .distinct(:item__restrictions)
+        .order(Sequel.desc(:item__restrictions))
+        .select(:item_restrictions__id, :item_restrictions__description)
+
+      if restrictions.length > 0
+        most_restrictive = restrictions.first
+
+        record['notes'] ||= []
+        record['notes'] << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'accessrestrict',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => most_restrictive[:description],
+            }
+          ]
+        }
+
+        if most_restrictive[:id] > 1
+          record['restrictions_apply'] = true
+        end
+      end
     end
 
   end
