@@ -33,6 +33,7 @@ class DigitalObjectConverter < Converter
       'notes' => extract_notes(object, item, digital_object, db),
       'user_defined' => extract_user_defined(object, item, digital_object, db),
       'language' => build_language(object, db),
+      'subjects' => build_subjects(item, db),
     }.merge(extract_audit_info(object, db))
   end
 
@@ -415,5 +416,24 @@ class DigitalObjectConverter < Converter
                               .filter(:enclosure__descendant => object[:id])
                               .select(:enclosure__ancestor))
       .first[:language]
+  end
+
+
+  def build_subjects(object, db)
+    subjects = []
+
+    db[:item_topic_term].filter(:item => item[:id]).each do |row|
+      subjects << {
+        'ref' => Migrator.promise('subject_uri', "topic_term:#{row[:term]}")
+      }
+    end
+
+    db[:item_geographic_term].filter(:item => item[:id]).each do |row|
+      subjects << {
+        'ref' => Migrator.promise('subject_uri', "geographic_term:#{row[:term]}")
+      }
+    end
+
+    subjects
   end
 end
