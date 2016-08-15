@@ -202,7 +202,9 @@ class ArchivalObjectConverter < Converter
 
       record['subjects'] ||= []
       record['subjects'].concat(subjects)
-      record['agent_links'] = agent_links
+
+      record['linked_agents'] ||= []
+      record['linked_agents'].concat(agent_links)
     end
 
     def build_container(class_object, db)
