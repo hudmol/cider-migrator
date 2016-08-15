@@ -204,8 +204,11 @@ class DigitalObjectConverter < Converter
   end
 
   def extract_dates(object, item, digital_object, db)
-    # FIXME add created and from audit trail?
-    []
+    dates = []
+
+    dates << Dates.enclosed_range(db, item[:id])
+
+    dates.compact!
   end
 
   def extract_user_defined(object, item, digital_object, db)
