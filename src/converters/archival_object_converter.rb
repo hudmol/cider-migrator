@@ -139,11 +139,12 @@ class ArchivalObjectConverter < Converter
       # derive the restrictions for the series
 
       restrictions = db[:item]
-        .join(:item_restrictions, :item_restrictions__id, :item__restrictions)
-        .filter(:item__id => db[:enclosure].filter(:ancestor => @series[:id]))
-        .distinct(:item__restrictions)
-        .order(Sequel.desc(:item__restrictions))
-        .select(:item_restrictions__id, :item_restrictions__description)
+        .join(:item_restrictions, :item_restrictions__id => :item__restrictions)
+        .filter(:item__id => db[:enclosure].filter(:ancestor => @series[:id]).select(:descendant))
+        .distinct(:item_restrictions__id)
+        .select(:item_restrictions__id)
+        .order(Sequel.desc(:item_restrictions__id))
+        .map {|row| row[:id]}
 
       if restrictions.length > 0
         record['notes'] ||= []
@@ -156,13 +157,13 @@ class ArchivalObjectConverter < Converter
               'jsonmodel_type' => 'note_text',
               'publish' => false,
               'content' => restrictions.collect {|r|
-                RESTRICTION_NOTES[r[:id]]
+                RESTRICTION_NOTES[r]
               }.join(" "),
             }
           ]
         }
 
-        if most_restrictive[:id] > 1
+        if restrictions[0] > 1
           record['restrictions_apply'] = true
         end
       end
