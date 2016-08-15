@@ -139,6 +139,16 @@ class DigitalObjectConverter < Converter
       }
     end
 
+    if item[:description]
+      notes << {
+        'jsonmodel_type' => 'note_digital_object',
+        'publish' => true,
+        'label' => 'Description',
+        'type' => 'note',
+        'content' => [item[:description]]
+      }
+    end
+
     notes
   end
 
