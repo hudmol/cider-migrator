@@ -4,6 +4,13 @@ class ArchivalObjectConverter < Converter
 
   CPUS_TO_MELT = 8
 
+  RESTRICTION_NOTES = {
+    1 => "Open for research.",
+    2 => "20 years from date of creation.",
+    3 => "75 years from the date of creation.",
+    4 => "Physical condition.",
+  }
+
   class ArchivalObject
 
     def from_object(object, db)
@@ -139,8 +146,6 @@ class ArchivalObjectConverter < Converter
         .select(:item_restrictions__id, :item_restrictions__description)
 
       if restrictions.length > 0
-        most_restrictive = restrictions.first
-
         record['notes'] ||= []
         record['notes'] << {
           'jsonmodel_type' => 'note_multipart',
@@ -150,7 +155,9 @@ class ArchivalObjectConverter < Converter
             {
               'jsonmodel_type' => 'note_text',
               'publish' => false,
-              'content' => most_restrictive[:description],
+              'content' => restrictions.collect {|r|
+                RESTRICTION_NOTES[r[:id]]
+              }.join(" "),
             }
           ]
         }
@@ -336,38 +343,102 @@ class ArchivalObjectConverter < Converter
       }
     end
 
-
-    def restriction_types(db)
-      return @restriction_types if @restriction_types
-
-      @restriction_types = {}
-      db[:item_restrictions].each { |ir| @restriction_types[ir[:id]] = ir[:description] }
-
-      @restriction_types
-    end
-
-
     def build_notes(object, item, db)
       notes = []
 
       # restrictions == 1 is no restrictions
-      if item[:restrictions] > 1
+      if item[:restrictions]
 
-        content = restriction_types(db)[item[:restrictions]]
+        content = RESTRICTION_NOTES[item[:restrictions]]
 
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'accessrestrict',
-          'publish' => true,
+          'publish' => false,
           'subnotes' => [
                          {
                            'jsonmodel_type' => 'note_text',
-                           'publish' => true,
+                           'publish' => false,
                            'content' => content,
                          }
                         ]
         }
 
+      end
+
+      if item[:abstract]
+        notes << {
+          'jsonmodel_type' => 'note_singlepart',
+          'type' => 'abstract',
+          'publish' => false,
+          'content' => [item[:abstract]]
+        }
+      end
+
+      if item[:accession_number]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => 'accessions, numbers separated by commas',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => item[:accession_number],
+            }
+          ]
+        }
+      end
+
+      if item[:citation]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'prefercite',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => item[:citation],
+            }
+          ]
+        }
+      end
+
+      if item[:description]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'scopecontent',
+          'publish' => true,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => true,
+              'content' => item[:description],
+            }
+          ]
+        }
+      end
+
+      if item[:volume] || item[:issue]
+        label_bits = []
+        label_bits << "volume" if item[:volume]
+        label_bits << "issue" if item[:issue]
+
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => label_bits.join(", ").capitalize,
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => [item[:volume], item[:issue]].compact.join(", "),
+            }
+          ]
+        }
       end
 
       notes
