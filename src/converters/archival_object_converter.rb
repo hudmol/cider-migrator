@@ -79,6 +79,24 @@ class ArchivalObjectConverter < Converter
 
       if item
         dates << Dates.enclosed_range(db, item[:id])
+
+        # add the item's dates as a creation single/inclusive date
+        # only from date so show as single
+        if item[:item_date_from] && !item[:item_date_to]
+          dates << Dates.single(item[:item_date_from]).merge({
+            'label' => 'creation',
+            'date_type' => 'single',
+          })
+        # both or only to date so show as inclusive
+        elsif item[:item_date_to]
+          dates << {
+            'jsonmodel_type' => 'date',
+            'date_type' => 'inclusive',
+            'begin' => item[:item_date_from],
+            'end' => item[:item_date_to],
+            'label' => 'creation',
+          }
+        end
       end
 
       dates.compact!
