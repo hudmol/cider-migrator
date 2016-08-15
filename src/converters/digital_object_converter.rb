@@ -32,6 +32,7 @@ class DigitalObjectConverter < Converter
       'file_versions' => extract_file_versions(object, item, digital_object, db),
       'notes' => extract_notes(object, item, digital_object, db),
       'user_defined' => extract_user_defined(object, item, digital_object, db),
+      'language' => build_language(object, db),
     }.merge(extract_audit_info(object, db))
   end
 
@@ -405,5 +406,14 @@ class DigitalObjectConverter < Converter
     end
 
     processed_event
+  end
+
+  def build_language(object, db)
+    db[:collection_language]
+      .where(:collection => db[:collection]
+                              .join(:enclosure, :enclosure__ancestor => :collection__id)
+                              .filter(:enclosure__descendant => object[:id])
+                              .select(:enclosure__ancestor))
+      .first[:language]
   end
 end
