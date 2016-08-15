@@ -34,6 +34,7 @@ class DigitalObjectConverter < Converter
       'user_defined' => extract_user_defined(object, item, digital_object, db),
       'language' => build_language(object, db),
       'subjects' => build_subjects(item, db),
+      'linked_agents' => build_linked_agents(item, db),
     }.merge(extract_audit_info(object, db))
   end
 
@@ -419,7 +420,7 @@ class DigitalObjectConverter < Converter
   end
 
 
-  def build_subjects(object, db)
+  def build_subjects(item, db)
     subjects = []
 
     db[:item_topic_term].filter(:item => item[:id]).each do |row|
@@ -435,5 +436,28 @@ class DigitalObjectConverter < Converter
     end
 
     subjects
+  end
+
+
+  def build_linked_agents(item, db)
+    linked_agents = []
+
+    db[:object]
+      .join(:item_authority_name, :item_authority_name__item => :object__id)
+      .join(:authority_name, :authority_name__id => :item_authority_name__name)
+      .filter(:item => item[:id])
+      .filter(:item_authority_name__role => 'personal_name')
+      .select(:authority_name__id, :authority_name__name, :item_authority_name__role)
+      .each do |link|
+
+      if !AuthorityName.subject?(link[:name])
+        linked_agents << {
+          'role' => 'subject',
+          'ref' => Migrator.promise('authority_name_agent_uri', link[:id].to_s)
+        }
+      end
+    end
+
+    linked_agents
   end
 end
