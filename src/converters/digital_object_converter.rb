@@ -100,27 +100,46 @@ class DigitalObjectConverter < Converter
   def extract_notes(object, item, digital_object, db)
     notes = []
 
+    digital_object_notes = []
+
     # The checksum might have been too large to fit in the ArchivesSpace
     # checksum field (for example, if it's actually a list of checksums of
     # multiple files).  Store it in a note instead.
     if digital_object[:checksum] && digital_object[:checksum].length >= 255
-      notes << digital_object[:checksum]
+      digital_object_notes << digital_object[:checksum]
     end
 
     if digital_object[:notes] && !digital_object[:notes].empty?
-      notes << digital_object[:notes]
+      digital_object_notes << digital_object[:notes]
     end
 
-    if !notes.empty?
-      [{
+    if !digital_object_notes.empty?
+      notes << {
         'jsonmodel_type' => 'note_digital_object',
         'publish' => true,
         'type' => 'note',
-        'content' => notes
-      }]
-    else
-      []
+        'content' => digital_object_notes
+      }
     end
+
+
+    collection = db[:collection]
+      .join(:object, :object__id => :collection__id)
+      .join(:enclosure, :enclosure__ancestor => :collection__id)
+      .filter(:enclosure__descendant => object[:id])
+      .select(:object__number).first
+
+    if collection
+      notes << {
+        'jsonmodel_type' => 'note_digital_object',
+        'publish' => true,
+        'label' => 'Source',
+        'type' => 'note',
+        'content' => [collection[:number]]
+      }
+    end
+
+    notes
   end
 
   def extract_digital_object_type(object, item, digital_object, db)
