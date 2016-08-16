@@ -53,3 +53,45 @@
 
 -- FAAASTER
 create index do_pid_idx on digital_object (pid(50));
+
+-- fix date data
+-- 19974	NULL
+update item set item_date_from = '1997' where item_date_from = '19974' and item_date_to is null;
+-- 1971	19766
+update item set item_date_to = '1976' where item_date_from = '1971' and item_date_to = '19766';
+-- 199110-05	NULL
+update item set item_date_from = '1991-10-05' where item_date_from = '199110-05' and item_date_to is null;
+-- 19791	1981
+update item set item_date_from = '1979' where item_date_from = '19791' and item_date_to = '1981';
+-- 19561977	NULL
+update item set item_date_from = '1956' and item_date_to = '1977' where item_date_from = '19561977' and item_date_to is null;
+-- 191957	1971
+update item set item_date_from = '1957' where item_date_from = '191957' and item_date_to = '1971';
+-- 1969	19979
+update item set item_date_to = '1979' where item_date_from = '1969' and item_date_to = '19979';
+-- 20014	NULL
+update item set item_date_from = '2001-04' where item_date_from = '20014' and item_date_to is null;
+-- 2000	20004
+update item set item_date_to = '2004' where item_date_from = '2000' and item_date_to = '20004';
+-- 1986	19870
+update item set item_date_to = '1987' where item_date_from = '1986' and item_date_to = '19870';
+-- 2000	20001
+update item set item_date_to = '2001' where item_date_from = '2000' and item_date_to = '20001';
+-- 19228	NULL
+update item set item_date_from = '1928' where item_date_from = '19228' and item_date_to is null;
+-- 19554	NULL
+update item set item_date_from = '1954' where item_date_from = '19554' and item_date_to is null;
+-- 2000	20001
+update item set item_date_to = '2001' where item_date_from = '2000' and item_date_to = '20001';
+-- 19458	NULL
+update item set item_date_from = '1948' where item_date_from = '19458' and item_date_to is null;
+-- 1984	19990
+update item set item_date_to = '1999' where item_date_from = '1984' and item_date_to = '19990';
+-- 1974	19997
+update item set item_date_to = '1997' where item_date_from = '1974' and item_date_to = '19997';
+-- 19886	NULL
+update item set item_date_from = '1986' where item_date_from = '19886' and item_date_to is null;
+-- 19633-06	NULL
+update item set item_date_from = '1963-06' where item_date_from = '19633-06' and item_date_to is null;
+-- 19950-06	NULL
+update item set item_date_from = '1995-06' where item_date_from = '19950-06' and item_date_to is null;
