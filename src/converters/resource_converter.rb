@@ -332,6 +332,23 @@ class ResourceConverter < Converter
         }
       end
 
+
+      if collection[:processing_status]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'processinfo',
+          'label' => 'Processing status',
+          'publish' => true,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => true,
+              'content' => db[:processing_status].filter(:id => collection[:processing_status]).first[:description],
+            }
+          ]
+        }
+      end
+
       notes
     end
 
