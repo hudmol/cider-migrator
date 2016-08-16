@@ -94,7 +94,22 @@ class ArchivalObjectConverter < Converter
             'label' => 'creation',
             'date_type' => 'single',
           })
-        # both or only to date so show as inclusive
+        # both dates so show as inclusive
+        elsif item[:item_date_from] && item[:item_date_to]
+          date_arr = [item[:item_date_from], item[:item_date_to]].sort
+
+          if date_arr[0] != item[:item_date_from]
+            Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item[:item_date_from]} > #{item[:item_date_to]})")
+          end
+
+          dates << {
+            'jsonmodel_type' => 'date',
+            'date_type' => 'inclusive',
+            'begin' => date_arr[0],
+            'end' => date_arr[1],
+            'label' => 'creation',
+          }
+        # only to date so show as inclusive
         elsif item[:item_date_to]
           dates << {
             'jsonmodel_type' => 'date',
