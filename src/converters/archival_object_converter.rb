@@ -4,6 +4,13 @@ class ArchivalObjectConverter < Converter
 
   CPUS_TO_MELT = 8
 
+  RESTRICTION_NOTES = {
+    1 => "Open for research.",
+    2 => "20 years from date of creation.",
+    3 => "75 years from the date of creation.",
+    4 => "Physical condition.",
+  }
+
   class ArchivalObject
 
     def from_object(object, db)
@@ -101,9 +108,16 @@ class ArchivalObjectConverter < Converter
 
   class Series < ArchivalObject
     def from_object(object, db)
-      super.merge({
+      @series = db[:series].where(:id => object[:id]).first
+
+      record = super.merge({
         'level' => 'series',
+        'notes' => build_notes(object, db),
       })
+
+      apply_restriction_fields(record, db)
+
+      record
     end
 
     private
@@ -111,15 +125,100 @@ class ArchivalObjectConverter < Converter
     def build_dates(object, db)
       dates = super
 
-      series = db[:series].where(:id => object[:id]).first
-
       # bulk dates > date_type = bulk, date_label = creation
-      bulk_date = Dates.range(series[:bulk_date_from], series[:bulk_date_to])
+      bulk_date = Dates.range(@series[:bulk_date_from], @series[:bulk_date_to])
       if bulk_date
         dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
       end
 
       dates
+    end
+
+
+    def apply_restriction_fields(record, db)
+      # derive the restrictions for the series
+
+      restrictions = db[:item]
+        .join(:item_restrictions, :item_restrictions__id => :item__restrictions)
+        .filter(:item__id => db[:enclosure].filter(:ancestor => @series[:id]).select(:descendant))
+        .distinct(:item_restrictions__id)
+        .select(:item_restrictions__id)
+        .order(Sequel.desc(:item_restrictions__id))
+        .map {|row| row[:id]}
+
+      if restrictions.length > 0
+        record['notes'] ||= []
+        record['notes'] << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'accessrestrict',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => restrictions.collect {|r|
+                RESTRICTION_NOTES[r]
+              }.join(" "),
+            }
+          ]
+        }
+
+        if restrictions[0] > 1
+          record['restrictions_apply'] = true
+        end
+      end
+    end
+
+    def build_notes(object, db)
+      notes = []
+
+      if @series[:description]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'scopecontent',
+          'publish' => true,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => true,
+              'content' => @series[:description],
+            }
+          ]
+        }
+      end
+
+      if @series[:arrangement]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'arrangement',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => @series[:arrangement],
+            }
+          ]
+        }
+      end
+
+      if @series[:notes]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => 'Internal notes',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => @series[:notes],
+            }
+          ]
+        }
+      end
+
+      notes
     end
 
   end
@@ -245,38 +344,102 @@ class ArchivalObjectConverter < Converter
       }
     end
 
-
-    def restriction_types(db)
-      return @restriction_types if @restriction_types
-
-      @restriction_types = {}
-      db[:item_restrictions].each { |ir| @restriction_types[ir[:id]] = ir[:description] }
-
-      @restriction_types
-    end
-
-
     def build_notes(object, item, db)
       notes = []
 
       # restrictions == 1 is no restrictions
-      if item[:restrictions] > 1
+      if item[:restrictions]
 
-        content = restriction_types(db)[item[:restrictions]]
+        content = RESTRICTION_NOTES[item[:restrictions]]
 
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'accessrestrict',
-          'publish' => true,
+          'publish' => false,
           'subnotes' => [
                          {
                            'jsonmodel_type' => 'note_text',
-                           'publish' => true,
+                           'publish' => false,
                            'content' => content,
                          }
                         ]
         }
 
+      end
+
+      if item[:abstract]
+        notes << {
+          'jsonmodel_type' => 'note_singlepart',
+          'type' => 'abstract',
+          'publish' => false,
+          'content' => [item[:abstract]]
+        }
+      end
+
+      if item[:accession_number]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => 'accessions, numbers separated by commas',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => item[:accession_number],
+            }
+          ]
+        }
+      end
+
+      if item[:citation]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'prefercite',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => item[:citation],
+            }
+          ]
+        }
+      end
+
+      if item[:description]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'scopecontent',
+          'publish' => true,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => true,
+              'content' => item[:description],
+            }
+          ]
+        }
+      end
+
+      if item[:volume] || item[:issue]
+        label_bits = []
+        label_bits << "volume" if item[:volume]
+        label_bits << "issue" if item[:issue]
+
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => label_bits.join(", ").capitalize,
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => [item[:volume], item[:issue]].compact.join(", "),
+            }
+          ]
+        }
       end
 
       notes
