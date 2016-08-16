@@ -349,6 +349,28 @@ class ResourceConverter < Converter
         }
       end
 
+      accession_numbers = db[:item]
+        .join(:enclosure, :enclosure__descendant => :item__id)
+        .filter(:enclosure__ancestor => collection[:id])
+        .exclude(:item__accession_number => nil)
+        .select(:accession_number).distinct(:accession_number)
+
+      if accession_numbers.count > 0
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => 'Accessions',
+          'publish' => false,
+          'subnotes' => [{
+                           'jsonmodel_type' => 'note_text',
+                           'publish' => false,
+                           'content' => accession_numbers.map{|row|
+                            row[:accession_number]
+                           }.compact.join(", ")
+                         }]
+        }
+      end
+
       notes
     end
 
