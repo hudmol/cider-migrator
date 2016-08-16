@@ -35,8 +35,8 @@ class Dates
       "from item i, enclosure e where i.id = e.descendant and e.ancestor = #{id}"
     result = db.fetch(dates_query).first
     if result[:date_from]
-      from = [result[:date_from], result[:date_from_to], result[:date_to]].compact.min[0,4]
-      to = [result[:date_from], result[:date_from_to], result[:date_to]].compact.max[0,4]
+      from = [result[:date_from], result[:date_from_to], result[:date_to]].map {|s| Utils.trim(s) }.compact.min[0,4]
+      to = [result[:date_from], result[:date_from_to], result[:date_to]].map {|s| Utils.trim(s) }.compact.max[0,4]
       is_circa = result[:circa] == '1'
       range(from, to).merge({
         'date_type' => 'inclusive',

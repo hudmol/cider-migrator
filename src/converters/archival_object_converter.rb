@@ -89,17 +89,19 @@ class ArchivalObjectConverter < Converter
 
         # add the item's dates as a creation single/inclusive date
         # only from date so show as single
-        if item[:item_date_from] && !item[:item_date_to]
-          dates << Dates.single(item[:item_date_from]).merge({
+        item_date_from = Utils.trim(item[:item_date_from])
+        item_date_to = Utils.trim(item[:item_date_to])
+        if item_date_from && item_date_to.nil?
+          dates << Dates.single(item[:item_date_from].strip).merge({
             'label' => 'creation',
             'date_type' => 'single',
           })
         # both dates so show as inclusive
-        elsif item[:item_date_from] && item[:item_date_to]
-          date_arr = [item[:item_date_from], item[:item_date_to]].sort
+        elsif item_date_from && item_date_to
+          date_arr = [item_date_from, item_date_to].sort
 
-          if date_arr[0] != item[:item_date_from]
-            Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item[:item_date_from]} > #{item[:item_date_to]})")
+          if date_arr[0] != item_date_from
+            Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
           end
 
           dates << {
@@ -110,12 +112,11 @@ class ArchivalObjectConverter < Converter
             'label' => 'creation',
           }
         # only to date so show as inclusive
-        elsif item[:item_date_to]
+        elsif item_date_to
           dates << {
             'jsonmodel_type' => 'date',
             'date_type' => 'inclusive',
-            'begin' => item[:item_date_from],
-            'end' => item[:item_date_to],
+            'end' => item_date_to,
             'label' => 'creation',
           }
         end
