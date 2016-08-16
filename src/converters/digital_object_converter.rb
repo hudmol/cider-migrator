@@ -32,6 +32,9 @@ class DigitalObjectConverter < Converter
       'file_versions' => extract_file_versions(object, item, digital_object, db),
       'notes' => extract_notes(object, item, digital_object, db),
       'user_defined' => extract_user_defined(object, item, digital_object, db),
+      'language' => build_language(object, db),
+      'subjects' => build_subjects(item, db),
+      'linked_agents' => build_linked_agents(item, db),
     }.merge(extract_audit_info(object, db))
   end
 
@@ -139,6 +142,16 @@ class DigitalObjectConverter < Converter
       }
     end
 
+    if item[:description]
+      notes << {
+        'jsonmodel_type' => 'note_digital_object',
+        'publish' => true,
+        'label' => 'Description',
+        'type' => 'note',
+        'content' => [item[:description]]
+      }
+    end
+
     notes
   end
 
@@ -204,8 +217,11 @@ class DigitalObjectConverter < Converter
   end
 
   def extract_dates(object, item, digital_object, db)
-    # FIXME add created and from audit trail?
-    []
+    dates = []
+
+    dates << Dates.enclosed_range(db, item[:id])
+
+    dates.compact!
   end
 
   def extract_user_defined(object, item, digital_object, db)
@@ -392,5 +408,56 @@ class DigitalObjectConverter < Converter
     end
 
     processed_event
+  end
+
+  def build_language(object, db)
+    db[:collection_language]
+      .where(:collection => db[:collection]
+                              .join(:enclosure, :enclosure__ancestor => :collection__id)
+                              .filter(:enclosure__descendant => object[:id])
+                              .select(:enclosure__ancestor))
+      .first[:language]
+  end
+
+
+  def build_subjects(item, db)
+    subjects = []
+
+    db[:item_topic_term].filter(:item => item[:id]).each do |row|
+      subjects << {
+        'ref' => Migrator.promise('subject_uri', "topic_term:#{row[:term]}")
+      }
+    end
+
+    db[:item_geographic_term].filter(:item => item[:id]).each do |row|
+      subjects << {
+        'ref' => Migrator.promise('subject_uri', "geographic_term:#{row[:term]}")
+      }
+    end
+
+    subjects
+  end
+
+
+  def build_linked_agents(item, db)
+    linked_agents = []
+
+    db[:object]
+      .join(:item_authority_name, :item_authority_name__item => :object__id)
+      .join(:authority_name, :authority_name__id => :item_authority_name__name)
+      .filter(:item => item[:id])
+      .filter(:item_authority_name__role => 'personal_name')
+      .select(:authority_name__id, :authority_name__name, :item_authority_name__role)
+      .each do |link|
+
+      if !AuthorityName.subject?(link[:name])
+        linked_agents << {
+          'role' => 'subject',
+          'ref' => Migrator.promise('authority_name_agent_uri', link[:id].to_s)
+        }
+      end
+    end
+
+    linked_agents
   end
 end

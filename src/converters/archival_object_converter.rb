@@ -20,7 +20,7 @@ class ArchivalObjectConverter < Converter
         'id' => object[:number],
         'component_id' => object[:number],
         'publish' => true,
-        'language' => 'eng',
+        'language' => build_language(object, db),
         'dates' => build_dates(object, db)
       }
 
@@ -93,6 +93,15 @@ class ArchivalObjectConverter < Converter
       dates
     end
 
+
+    def build_language(object, db)
+      db[:collection_language]
+        .where(:collection => db[:collection]
+                                .join(:enclosure, :enclosure__ancestor => :collection__id)
+                                .filter(:enclosure__descendant => object[:id])
+                                .select(:enclosure__ancestor))
+        .first[:language]
+    end
   end
 
 
