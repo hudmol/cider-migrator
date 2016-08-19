@@ -131,10 +131,9 @@ class ArchivalObjectConverter < Converter
       dates = super
 
       # bulk dates > date_type = bulk, date_label = creation
-      bulk_date = Dates.range(@series[:bulk_date_from], @series[:bulk_date_to])
-      if bulk_date
-        dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
-      end
+      dates << Dates.range(@series[:bulk_date_from], @series[:bulk_date_to], 'creation', 'bulk')
+
+      dates.compact!
 
       dates
     end
@@ -501,11 +500,13 @@ class ArchivalObjectConverter < Converter
       item_date_from = Utils.trim(item[:item_date_from])
       item_date_to = Utils.trim(item[:item_date_to])
       if item_date_from && item_date_to.nil?
-        dates << Dates.single(item[:item_date_from].strip).merge({
-                                                                   'label' => 'creation',
-                                                                   'date_type' => 'single',
-                                                                 })
-        # both dates so show as inclusive
+        add_date_if_unqiue(dates, Dates.single(item[:item_date_from].strip).merge({
+                                                                                    'label' => 'creation',
+                                                                                    'date_type' => 'single',
+                                                                                    'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                  }))
+
+      # both dates so show as inclusive
       elsif item_date_from && item_date_to
         date_arr = [item_date_from, item_date_to].sort
 
@@ -513,24 +514,24 @@ class ArchivalObjectConverter < Converter
           Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
         end
 
-        dates << {
-          'jsonmodel_type' => 'date',
-          'date_type' => 'inclusive',
-          'begin' => date_arr[0],
-          'end' => date_arr[1],
-          'label' => 'creation',
-        }
-        # only to date so show as inclusive
+        add_date_if_unqiue(dates, Dates.range(date_arr[0], date_arr[1], 'creation', 'inclusive').merge({
+                                                                                                         'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                                       }))
+
+      # only to date so show as inclusive
       elsif item_date_to
-        dates << {
-          'jsonmodel_type' => 'date',
-          'date_type' => 'inclusive',
-          'end' => item_date_to,
-          'label' => 'creation',
-        }
+        add_date_if_unqiue(dates, Dates.range(nil, item_date_to, 'creation', 'inclusive').merge({
+                                                                                                  'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                                }))
       end
 
       dates
+    end
+
+
+    # we want to avoid duplicate item dates
+    def add_date_if_unqiue(dates, date_to_add)
+      dates << date_to_add if dates.none? {|date|  date == date_to_add }
     end
 
   end
