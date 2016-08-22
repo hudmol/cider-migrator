@@ -20,7 +20,8 @@ class Dates
       'date_type' => date_type,
       'begin' => dates[0],
       'end' => dates[1],
-      'expression' => dates.join(' -- '),
+      # if both dates are equal, expression should show single year
+      'expression' => dates.uniq.join(' -- '),
       'label' => label,
     }
   end
