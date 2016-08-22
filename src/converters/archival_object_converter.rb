@@ -500,7 +500,7 @@ class ArchivalObjectConverter < Converter
       item_date_from = Utils.trim(item[:item_date_from])
       item_date_to = Utils.trim(item[:item_date_to])
       if item_date_from && item_date_to.nil?
-        add_date_if_unqiue(dates, Dates.single(item[:item_date_from].strip).merge({
+        add_date_if_unique(dates, Dates.single(item[:item_date_from].strip).merge({
                                                                                     'label' => 'creation',
                                                                                     'date_type' => 'single',
                                                                                     'certainty' => item[:circa] == '1' ? 'approximate' : nil,
@@ -514,13 +514,13 @@ class ArchivalObjectConverter < Converter
           Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
         end
 
-        add_date_if_unqiue(dates, Dates.range(date_arr[0], date_arr[1], 'creation', 'inclusive').merge({
+        add_date_if_unique(dates, Dates.range(date_arr[0], date_arr[1], 'creation', 'inclusive').merge({
                                                                                                          'certainty' => item[:circa] == '1' ? 'approximate' : nil,
                                                                                                        }))
 
       # only to date so show as inclusive
       elsif item_date_to
-        add_date_if_unqiue(dates, Dates.range(nil, item_date_to, 'creation', 'inclusive').merge({
+        add_date_if_unique(dates, Dates.range(nil, item_date_to, 'creation', 'inclusive').merge({
                                                                                                   'certainty' => item[:circa] == '1' ? 'approximate' : nil,
                                                                                                 }))
       end
@@ -530,7 +530,7 @@ class ArchivalObjectConverter < Converter
 
 
     # we want to avoid duplicate item dates
-    def add_date_if_unqiue(dates, date_to_add)
+    def add_date_if_unique(dates, date_to_add)
       dates << date_to_add if dates.none? {|date|  date['expression'] == date_to_add['expression'] }
     end
 
