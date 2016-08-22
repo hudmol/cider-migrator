@@ -39,7 +39,15 @@ class Dates
       from = [result[:date_from], result[:date_from_to], result[:date_to]].map {|s| Utils.trim(s) }.compact.min[0,4]
       to = [result[:date_from], result[:date_from_to], result[:date_to]].map {|s| Utils.trim(s) }.compact.max[0,4]
 
-      range(from, to, 'creation', 'inclusive')
+      date = range(from, to, 'creation', 'inclusive')
+
+      # if item doesn't have any children (only one descendant, itself)
+      if db[:enclosure].filter(:ancestor => id).count == 1
+        # then merge in the item's circa value
+        date['certainty'] = 'approximate' if result[:circa] == '1'
+      end
+
+      date
     end
   end
 
