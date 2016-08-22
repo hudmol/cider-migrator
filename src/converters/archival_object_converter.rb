@@ -531,7 +531,7 @@ class ArchivalObjectConverter < Converter
 
     # we want to avoid duplicate item dates
     def add_date_if_unqiue(dates, date_to_add)
-      dates << date_to_add if dates.none? {|date|  date == date_to_add }
+      dates << date_to_add if dates.none? {|date|  date['expression'] == date_to_add['expression'] }
     end
 
   end
