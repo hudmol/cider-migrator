@@ -82,45 +82,7 @@ class ArchivalObjectConverter < Converter
     def build_dates(object, db)
       dates = []
 
-      item = db[:item].where(:id => object[:id]).first
-
-      if item
-        dates << Dates.enclosed_range(db, item[:id])
-
-        # add the item's dates as a creation single/inclusive date
-        # only from date so show as single
-        item_date_from = Utils.trim(item[:item_date_from])
-        item_date_to = Utils.trim(item[:item_date_to])
-        if item_date_from && item_date_to.nil?
-          dates << Dates.single(item[:item_date_from].strip).merge({
-            'label' => 'creation',
-            'date_type' => 'single',
-          })
-        # both dates so show as inclusive
-        elsif item_date_from && item_date_to
-          date_arr = [item_date_from, item_date_to].sort
-
-          if date_arr[0] != item_date_from
-            Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
-          end
-
-          dates << {
-            'jsonmodel_type' => 'date',
-            'date_type' => 'inclusive',
-            'begin' => date_arr[0],
-            'end' => date_arr[1],
-            'label' => 'creation',
-          }
-        # only to date so show as inclusive
-        elsif item_date_to
-          dates << {
-            'jsonmodel_type' => 'date',
-            'date_type' => 'inclusive',
-            'end' => item_date_to,
-            'label' => 'creation',
-          }
-        end
-      end
+      dates << Dates.enclosed_range(db, object[:id])
 
       dates.compact!
 
@@ -169,10 +131,9 @@ class ArchivalObjectConverter < Converter
       dates = super
 
       # bulk dates > date_type = bulk, date_label = creation
-      bulk_date = Dates.range(@series[:bulk_date_from], @series[:bulk_date_to])
-      if bulk_date
-        dates << bulk_date.merge({'date_type' => 'bulk', 'label' => 'creation'})
-      end
+      dates << Dates.range(@series[:bulk_date_from], @series[:bulk_date_to], 'creation', 'bulk')
+
+      dates.compact!
 
       dates
     end
@@ -275,7 +236,7 @@ class ArchivalObjectConverter < Converter
 
   class Item < ArchivalObject
     def from_object(object, db)
-      item = db[:item].where(:id => object[:id]).first
+      @item = db[:item].where(:id => object[:id]).first
 
       record = super.merge({
                     'level' => find_level(object, item, db),
@@ -288,6 +249,10 @@ class ArchivalObjectConverter < Converter
       merge_authority_name_links(record, object, item, db)
 
       record
+    end
+
+    def item
+      @item
     end
 
     def find_level(object, item, db)
@@ -525,6 +490,48 @@ class ArchivalObjectConverter < Converter
       end
 
       instances
+    end
+
+    def build_dates(object, db)
+      dates = super
+
+      # add the item's dates as a creation single/inclusive date
+      # only from date so show as single
+      item_date_from = Utils.trim(item[:item_date_from])
+      item_date_to = Utils.trim(item[:item_date_to])
+      if item_date_from && item_date_to.nil?
+        add_date_if_unique(dates, Dates.single(item[:item_date_from].strip).merge({
+                                                                                    'label' => 'creation',
+                                                                                    'date_type' => 'single',
+                                                                                    'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                  }))
+
+      # both dates so show as inclusive
+      elsif item_date_from && item_date_to
+        date_arr = [item_date_from, item_date_to].sort
+
+        if date_arr[0] != item_date_from
+          Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
+        end
+
+        add_date_if_unique(dates, Dates.range(date_arr[0], date_arr[1], 'creation', 'inclusive').merge({
+                                                                                                         'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                                       }))
+
+      # only to date so show as inclusive
+      elsif item_date_to
+        add_date_if_unique(dates, Dates.range(nil, item_date_to, 'creation', 'inclusive').merge({
+                                                                                                  'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                                }))
+      end
+
+      dates
+    end
+
+
+    # we want to avoid duplicate item dates
+    def add_date_if_unique(dates, date_to_add)
+      dates << date_to_add if dates.none? {|date|  date['expression'] == date_to_add['expression'] }
     end
 
   end

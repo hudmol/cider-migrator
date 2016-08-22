@@ -10,23 +10,28 @@ class Dates
   end
 
 
-  def self.range(start_date, end_date, label = nil)
+  def self.range(start_date, end_date, label = nil, date_type = 'inclusive')
     dates = [start_date, end_date].map {|s| Utils.trim(s) }.compact
 
     return nil if dates.empty?
 
     {
       'jsonmodel_type' => 'date',
-      'date_type' => 'range',
+      'date_type' => date_type,
       'begin' => dates[0],
       'end' => dates[1],
-      'expression' => dates.join(' -- '),
+      # if both dates are equal, expression should show single year
+      'expression' => dates.uniq.join(' -- '),
       'label' => label,
     }
   end
 
 
   def self.enclosed_range(db, id)
+    # don't need to calculate range if item doesn't have descendants
+    return if db[:enclosure].filter(:ancestor => id).count == 1
+
+
     # derived dates > date_type = inclusive, date_label = creation
     # creation dates are derived. see:
     # lib/CIDER/Schema/Result/ObjectWithDerivedFields
@@ -37,12 +42,8 @@ class Dates
     if result[:date_from]
       from = [result[:date_from], result[:date_from_to], result[:date_to]].map {|s| Utils.trim(s) }.compact.min[0,4]
       to = [result[:date_from], result[:date_from_to], result[:date_to]].map {|s| Utils.trim(s) }.compact.max[0,4]
-      is_circa = result[:circa] == '1'
-      range(from, to).merge({
-        'date_type' => 'inclusive',
-        'label' => 'creation',
-        'certainty' => is_circa ? 'approximate' : nil,
-      })
+
+      range(from, to, 'creation', 'inclusive')
     end
   end
 
