@@ -28,10 +28,6 @@ class Dates
 
 
   def self.enclosed_range(db, id)
-    # don't need to calculate range if item doesn't have descendants
-    return if db[:enclosure].filter(:ancestor => id).count == 1
-
-
     # derived dates > date_type = inclusive, date_label = creation
     # creation dates are derived. see:
     # lib/CIDER/Schema/Result/ObjectWithDerivedFields
