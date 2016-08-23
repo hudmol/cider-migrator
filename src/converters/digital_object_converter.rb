@@ -450,13 +450,13 @@ class DigitalObjectConverter < Converter
       .join(:item_authority_name, :item_authority_name__item => :object__id)
       .join(:authority_name, :authority_name__id => :item_authority_name__name)
       .filter(:item => item[:id])
-      .filter(:item_authority_name__role => 'personal_name')
       .select(:authority_name__id, :authority_name__name, :item_authority_name__role)
       .each do |link|
 
       if !AuthorityName.subject?(link[:name])
+        role = (link[:role] == 'creator') ? 'creator' : 'subject'
         linked_agents << {
-          'role' => 'subject',
+          'role' => role,
           'ref' => Migrator.promise('authority_name_agent_uri', link[:id].to_s)
         }
       end
