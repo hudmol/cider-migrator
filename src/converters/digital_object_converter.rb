@@ -125,6 +125,15 @@ class DigitalObjectConverter < Converter
       }
     end
 
+    unless digital_object[:toc].to_s.empty?
+      notes << {
+          'jsonmodel_type' => 'note_digital_object',
+          'type' => 'summary',
+          'label' => 'File List',
+          'publish' => false,
+          'content' => [digital_object[:toc]]
+      }
+    end
 
     collection = db[:collection]
       .join(:object, :object__id => :collection__id)
