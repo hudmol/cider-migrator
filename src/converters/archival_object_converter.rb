@@ -240,7 +240,7 @@ class ArchivalObjectConverter < Converter
       item_classes = classes_for_item(object, db)
 
       record = super.merge({
-                    'level' => find_level(object, item, db),
+                    'level' => find_level(object, item, item_classes, db),
                     'subjects' => build_subjects(object, db),
                     'instances' => build_instances(object, db),
                     'restrictions_apply' => item[:restrictions] > 1,
@@ -256,13 +256,15 @@ class ArchivalObjectConverter < Converter
       @item
     end
 
-    def find_level(object, item, db)
+    def find_level(object, item, item_classes, db)
       if item[:is_group] == '1' # is_group is an enum and comes through as a string
         # Groups always migrate as files
         # See: https://www.pivotaltracker.com/n/projects/1592339
         'file'
-      elsif item[:dc_type] == 1 || db[:container].filter(:item => object[:id]).count > 0
+      elsif item[:dc_type] == 1
         # If the DC type is 'collection' (or the type of the item is), we'll emit a file
+        'file'
+      elsif item_classes[:container].length > 0 || item_classes[:file_folder].length > 0
         'file'
       else
         'item'
@@ -456,7 +458,7 @@ class ArchivalObjectConverter < Converter
 
       item_classes.each_value do |class_list|
         class_list.each do |item_class|
-          if !item_class[:notes].strip.empty?
+          if !item_class[:notes].to_s.strip.empty?
             notes << {
               'jsonmodel_type' => 'note_multipart',
               'type' => 'odd',
@@ -472,7 +474,7 @@ class ArchivalObjectConverter < Converter
             }
           end
 
-          if !item_class[:rights].strip.empty?
+          if !item_class[:rights].to_s.strip.empty?
             notes << {
               'jsonmodel_type' => 'note_multipart',
               'type' => 'userestrict',
