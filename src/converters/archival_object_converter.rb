@@ -195,11 +195,11 @@ class ArchivalObjectConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'arrangement',
-          'publish' => false,
+          'publish' => true,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
-              'publish' => false,
+              'publish' => true,
               'content' => @series[:arrangement],
             }
           ]
