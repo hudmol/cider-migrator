@@ -225,7 +225,7 @@ class DigitalObjectConverter < Converter
 
     dates << Dates.enclosed_range(db, item[:id])
 
-    dates.compact!
+    dates.compact
   end
 
   def extract_user_defined(object, item, digital_object, db)
