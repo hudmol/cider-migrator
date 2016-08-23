@@ -100,6 +100,41 @@ class DigitalObjectConverter < Converter
     end
   end
 
+  # Split `input` into chunks around line breaks, where each chunk is no greater
+  # than `max_chars`.  If we can't do that, we just split wherever.
+  #
+  # Return an array of strings.
+  def split_lines(input, max_chars)
+    result = []
+    remaining_input = input
+    loop do
+      break if remaining_input.empty?
+
+      if remaining_input.length < max_chars
+        result << remaining_input.chomp
+        remaining_input = ''
+      else
+        line_break_position = max_chars
+
+        while line_break_position >= 0 && remaining_input[line_break_position] != "\n"
+          line_break_position -= 1
+        end
+
+        if line_break_position > 0
+          result << remaining_input[0...line_break_position]
+          remaining_input = remaining_input[(line_break_position + 1)..-1]
+        else
+          # No line break found.  Will just have to hard truncate.
+          result << remaining_input[0...max_chars]
+          remaining_input = remaining_input[max_chars..-1]
+        end
+      end
+
+    end
+
+    result
+  end
+
   def extract_notes(object, item, digital_object, db)
     notes = []
 
@@ -126,12 +161,13 @@ class DigitalObjectConverter < Converter
     end
 
     unless digital_object[:toc].to_s.empty?
+      # Cap large table of contents near the character limit for individual notes
       notes << {
           'jsonmodel_type' => 'note_digital_object',
           'type' => 'summary',
           'label' => 'File List',
           'publish' => false,
-          'content' => [digital_object[:toc]]
+          'content' => split_lines(60000, digital_object[:toc]),
       }
     end
 
