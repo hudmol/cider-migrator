@@ -168,8 +168,12 @@ class DigitalObjectConverter < Converter
 
   def extract_file_extension(object, item, digital_object, db)
     if digital_object[:file_extension]
+      # If there's a file extension set, we'll use that.
       ext = db[:file_extension][:id => digital_object[:file_extension]][:extension]
-      # drop the leading '.'
+      # drop the leading '.' and '>' (some weird entries in the file_extension table...)
+      ext.sub(/^[.>]+/, "")
+
+    elsif !digital_object[:original_filename].to_s.empty? && (ext = File.extname(digital_object[:original_filename].downcase))
       ext.sub(/^\./, "")
     else
       nil
