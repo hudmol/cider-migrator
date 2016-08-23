@@ -441,11 +441,11 @@ class ArchivalObjectConverter < Converter
           'jsonmodel_type' => 'note_multipart',
           'type' => 'odd',
           'label' => label_bits.join(", ").capitalize,
-          'publish' => false,
+          'publish' => true,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
-              'publish' => false,
+              'publish' => true,
               'content' => [item[:volume], item[:issue]].compact.join(", "),
             }
           ]
