@@ -287,7 +287,7 @@ class ArchivalObjectConverter < Converter
         if item_classes.has_key?(c)
           item_classes[c].each do |class_object|
             format = db[:format].where(:id => class_object[:format]).first
-            subjects << { 'ref' => Migrator.promise('subject_format', format[:name]) }
+            subjects << { 'ref' => Migrator.promise('subject_format', format[:name]) } if format
           end
         end
       end
@@ -464,7 +464,6 @@ class ArchivalObjectConverter < Converter
         }
       end
 
-
       item_classes.each_value do |class_list|
         class_list.each do |item_class|
           if !item_class[:notes].to_s.strip.empty?
@@ -499,6 +498,26 @@ class ArchivalObjectConverter < Converter
             }
           end
 
+        end
+      end
+
+      [:document, :physical_image].map{|c| item_classes[c]}.each do |class_list|
+        class_list.each do |item_class|
+          if !item_class[:dimensions].to_s.strip.empty?
+            notes << {
+              'jsonmodel_type' => 'note_multipart',
+              'type' => 'odd',
+              'label' => 'Internal notes',
+              'publish' => false,
+              'subnotes' => [
+                             {
+                               'jsonmodel_type' => 'note_text',
+                               'publish' => false,
+                               'content' => item_class[:dimensions],
+                             }
+                            ]
+            }
+          end
         end
       end
 
