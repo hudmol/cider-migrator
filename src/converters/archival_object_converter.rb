@@ -155,11 +155,11 @@ class ArchivalObjectConverter < Converter
         record['notes'] << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'accessrestrict',
-          'publish' => false,
+          'publish' => true,
           'subnotes' => [
             {
               'jsonmodel_type' => 'note_text',
-              'publish' => false,
+              'publish' => true,
               'content' => restrictions.collect {|r|
                 RESTRICTION_NOTES[r]
               }.join(" "),
@@ -365,11 +365,11 @@ class ArchivalObjectConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'accessrestrict',
-          'publish' => false,
+          'publish' => true,
           'subnotes' => [
                          {
                            'jsonmodel_type' => 'note_text',
-                           'publish' => false,
+                           'publish' => true,
                            'content' => content,
                          }
                         ]
