@@ -390,7 +390,7 @@ class ArchivalObjectConverter < Converter
         notes << {
           'jsonmodel_type' => 'note_multipart',
           'type' => 'odd',
-          'label' => 'accessions, numbers separated by commas',
+          'label' => 'Accessions',
           'publish' => false,
           'subnotes' => [
             {
