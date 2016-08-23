@@ -262,6 +262,22 @@ class ResourceConverter < Converter
         }
       end
 
+      if collection[:notes]
+        notes << {
+          'jsonmodel_type' => 'note_multipart',
+          'type' => 'odd',
+          'label' => 'Internal notes',
+          'publish' => false,
+          'subnotes' => [
+            {
+              'jsonmodel_type' => 'note_text',
+              'publish' => false,
+              'content' => collection[:notes],
+            }
+          ]
+        }
+      end
+
       if collection[:scope]
         notes << {
           'jsonmodel_type' => 'note_multipart',
