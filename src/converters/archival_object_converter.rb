@@ -237,13 +237,14 @@ class ArchivalObjectConverter < Converter
   class Item < ArchivalObject
     def from_object(object, db)
       @item = db[:item].where(:id => object[:id]).first
+      item_classes = classes_for_item(object, db)
 
       record = super.merge({
                     'level' => find_level(object, item, db),
                     'subjects' => build_subjects(object, db),
                     'instances' => build_instances(object, db),
                     'restrictions_apply' => item[:restrictions] > 1,
-                    'notes' => build_notes(object, item, db),
+                    'notes' => build_notes(object, item, item_classes, db),
                   })
 
       merge_authority_name_links(record, object, item, db)
@@ -354,7 +355,7 @@ class ArchivalObjectConverter < Converter
       }
     end
 
-    def build_notes(object, item, db)
+    def build_notes(object, item, item_classes, db)
       notes = []
 
       # restrictions == 1 is no restrictions
@@ -452,6 +453,44 @@ class ArchivalObjectConverter < Converter
         }
       end
 
+
+      item_classes.each_value do |class_list|
+        class_list.each do |item_class|
+          if !item_class[:notes].strip.empty?
+            notes << {
+              'jsonmodel_type' => 'note_multipart',
+              'type' => 'odd',
+              'label' => 'Internal notes',
+              'publish' => false,
+              'subnotes' => [
+                             {
+                               'jsonmodel_type' => 'note_text',
+                               'publish' => false,
+                               'content' => item_class[:notes],
+                             }
+                            ]
+            }
+          end
+
+          if !item_class[:rights].strip.empty?
+            notes << {
+              'jsonmodel_type' => 'note_multipart',
+              'type' => 'userestrict',
+              'label' => 'Internal notes',
+              'publish' => false,
+              'subnotes' => [
+                             {
+                               'jsonmodel_type' => 'note_text',
+                               'publish' => false,
+                               'content' => item_class[:rights],
+                             }
+                            ]
+            }
+          end
+
+        end
+      end
+
       notes
     end
 
@@ -467,6 +506,21 @@ class ArchivalObjectConverter < Converter
       :browsing_object => 'digital_object_link', # made up - there aren't any of these anyway
       :file_folder => 'mixed_materials',         # ???
     }
+
+
+    def classes_for_item(object, db)
+      out = {}
+
+      CLASS_INSTANCE.each_key do |cider_class|
+        db[cider_class].where(:item => object[:id]).each do |class_object|
+          out[cider_class] ||= []
+          out[cider_class].push(class_object)
+        end
+      end
+
+      out
+    end
+
 
     def build_instances(object, db)
       instances = []
