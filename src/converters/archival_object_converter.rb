@@ -234,13 +234,14 @@ class ArchivalObjectConverter < Converter
   class Item < ArchivalObject
     def from_object(object, db)
       @item = db[:item].where(:id => object[:id]).first
+      item_classes = classes_for_item(object, db)
 
       record = super.merge({
-                    'level' => find_level(object, item, db),
-                    'subjects' => build_subjects(object, db),
+                    'level' => find_level(object, item, item_classes, db),
+                    'subjects' => build_subjects(object, item_classes, db),
                     'instances' => build_instances(object, db),
                     'restrictions_apply' => item[:restrictions] > 1,
-                    'notes' => build_notes(object, item, db),
+                    'notes' => build_notes(object, item, item_classes, db),
                   })
 
       merge_authority_name_links(record, object, item, db)
@@ -252,20 +253,22 @@ class ArchivalObjectConverter < Converter
       @item
     end
 
-    def find_level(object, item, db)
+    def find_level(object, item, item_classes, db)
       if item[:is_group] == '1' # is_group is an enum and comes through as a string
         # Groups always migrate as files
         # See: https://www.pivotaltracker.com/n/projects/1592339
         'file'
-      elsif item[:dc_type] == 1 || db[:container].filter(:item => object[:id]).count > 0
+      elsif item[:dc_type] == 1
         # If the DC type is 'collection' (or the type of the item is), we'll emit a file
+        'file'
+      elsif item_classes[:container].length > 0 || item_classes[:file_folder].length > 0
         'file'
       else
         'item'
       end
     end
 
-    def build_subjects(object, db)
+    def build_subjects(object, item_classes, db)
       # only items have these kinds of subjects
       subjects = []
 
@@ -275,6 +278,15 @@ class ArchivalObjectConverter < Converter
 
       db[:item_topic_term].where(:item => object[:id]).each do |row|
         subjects << { 'ref' => Migrator.promise('subject_uri', "topic_term:#{row[:term]}") }
+      end
+
+      [:bound_volume, :three_dimensional_object, :audio_visual_media, :document, :physical_image].each do |c|
+        if item_classes.has_key?(c)
+          item_classes[c].each do |class_object|
+            format = db[:format].where(:id => class_object[:format]).first
+            subjects << { 'ref' => Migrator.promise('subject_format', format[:name]) } if format
+          end
+        end
       end
 
       subjects
@@ -351,7 +363,7 @@ class ArchivalObjectConverter < Converter
       }
     end
 
-    def build_notes(object, item, db)
+    def build_notes(object, item, item_classes, db)
       notes = []
 
       # restrictions == 1 is no restrictions
@@ -449,6 +461,63 @@ class ArchivalObjectConverter < Converter
         }
       end
 
+      item_classes.each_value do |class_list|
+        class_list.each do |item_class|
+          if !item_class[:notes].to_s.strip.empty?
+            notes << {
+              'jsonmodel_type' => 'note_multipart',
+              'type' => 'odd',
+              'label' => 'Internal notes',
+              'publish' => false,
+              'subnotes' => [
+                             {
+                               'jsonmodel_type' => 'note_text',
+                               'publish' => false,
+                               'content' => item_class[:notes],
+                             }
+                            ]
+            }
+          end
+
+          if !item_class[:rights].to_s.strip.empty?
+            notes << {
+              'jsonmodel_type' => 'note_multipart',
+              'type' => 'userestrict',
+              'label' => 'Internal notes',
+              'publish' => false,
+              'subnotes' => [
+                             {
+                               'jsonmodel_type' => 'note_text',
+                               'publish' => false,
+                               'content' => item_class[:rights],
+                             }
+                            ]
+            }
+          end
+
+        end
+      end
+
+      [:document, :physical_image].map{|c| item_classes[c]}.each do |class_list|
+        class_list.each do |item_class|
+          if !item_class[:dimensions].to_s.strip.empty?
+            notes << {
+              'jsonmodel_type' => 'note_multipart',
+              'type' => 'odd',
+              'label' => 'Internal notes',
+              'publish' => false,
+              'subnotes' => [
+                             {
+                               'jsonmodel_type' => 'note_text',
+                               'publish' => false,
+                               'content' => item_class[:dimensions],
+                             }
+                            ]
+            }
+          end
+        end
+      end
+
       notes
     end
 
@@ -457,13 +526,28 @@ class ArchivalObjectConverter < Converter
       :container => 'mixed_materials', # ???
       :bound_volume => 'books',
       :three_dimensional_object => 'realia',
-      :audio_visual_media => 'audio', # or moving_images
+      :audio_visual_media => 'audio_or_moving_images',
       :document => 'text',
       :physical_image => 'graphic_materials',
       :digital_object => 'digital_object',
       :browsing_object => 'digital_object_link', # made up - there aren't any of these anyway
       :file_folder => 'mixed_materials',         # ???
     }
+
+
+    def classes_for_item(object, db)
+      out = {}
+
+      CLASS_INSTANCE.each_key do |cider_class|
+        out[cider_class] ||= []
+        db[cider_class].where(:item => object[:id]).each do |class_object|
+          out[cider_class].push(class_object)
+        end
+      end
+
+      out
+    end
+
 
     def build_instances(object, db)
       instances = []
