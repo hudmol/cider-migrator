@@ -167,7 +167,7 @@ class DigitalObjectConverter < Converter
           'type' => 'summary',
           'label' => 'File List',
           'publish' => false,
-          'content' => split_lines(60000, digital_object[:toc]),
+          'content' => split_lines(digital_object[:toc], 60000),
       }
     end
 
