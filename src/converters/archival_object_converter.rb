@@ -80,13 +80,7 @@ class ArchivalObjectConverter < Converter
 
 
     def build_dates(object, db)
-      dates = []
-
-      dates << Dates.enclosed_range(db, object[:id])
-
-      dates.compact!
-
-      dates
+      []
     end
 
 
@@ -129,6 +123,9 @@ class ArchivalObjectConverter < Converter
 
     def build_dates(object, db)
       dates = super
+
+      # inclusive dates
+      dates << Dates.enclosed_range(db, object[:id])
 
       # bulk dates > date_type = bulk, date_label = creation
       dates << Dates.range(@series[:bulk_date_from], @series[:bulk_date_to], 'creation', 'bulk')
@@ -495,34 +492,39 @@ class ArchivalObjectConverter < Converter
     def build_dates(object, db)
       dates = super
 
-      # add the item's dates as a creation single/inclusive date
-      # only from date so show as single
-      item_date_from = Utils.trim(item[:item_date_from])
-      item_date_to = Utils.trim(item[:item_date_to])
-      if item_date_from && item_date_to.nil?
-        add_date_if_unique(dates, Dates.single(item[:item_date_from].strip).merge({
-                                                                                    'label' => 'creation',
-                                                                                    'date_type' => 'single',
-                                                                                    'certainty' => item[:circa] == '1' ? 'approximate' : nil,
-                                                                                  }))
+      # only derive enclosed dates for items that are a file_folder or is_group
+      if item[:is_group] == '1' || db[:file_folder].filter(:item => object[:id]).count > 0
+        dates << Dates.enclosed_range(db, object[:id])
+      else
+        # add the item's dates as a creation single/inclusive date
+        # only from date so show as single
+        item_date_from = Utils.trim(item[:item_date_from])
+        item_date_to = Utils.trim(item[:item_date_to])
+        if item_date_from && item_date_to.nil?
+          dates << Dates.single(item[:item_date_from].strip).merge({
+                                                                     'label' => 'creation',
+                                                                     'date_type' => 'single',
+                                                                     'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                   })
 
-      # both dates so show as inclusive
-      elsif item_date_from && item_date_to
-        date_arr = [item_date_from, item_date_to].sort
+          # both dates so show as inclusive
+        elsif item_date_from && item_date_to
+          date_arr = [item_date_from, item_date_to].sort
 
-        if date_arr[0] != item_date_from
-          Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
+          if date_arr[0] != item_date_from
+            Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
+          end
+
+          dates << Dates.range(date_arr[0], date_arr[1], 'creation', 'inclusive').merge({
+                                                                                          'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                        })
+
+          # only to date so show as inclusive
+        elsif item_date_to
+          dates << Dates.range(nil, item_date_to, 'creation', 'inclusive').merge({
+                                                                                   'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                 })
         end
-
-        add_date_if_unique(dates, Dates.range(date_arr[0], date_arr[1], 'creation', 'inclusive').merge({
-                                                                                                         'certainty' => item[:circa] == '1' ? 'approximate' : nil,
-                                                                                                       }))
-
-      # only to date so show as inclusive
-      elsif item_date_to
-        add_date_if_unique(dates, Dates.range(nil, item_date_to, 'creation', 'inclusive').merge({
-                                                                                                  'certainty' => item[:circa] == '1' ? 'approximate' : nil,
-                                                                                                }))
       end
 
       dates
