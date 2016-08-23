@@ -53,3 +53,6 @@
 
 -- FAAASTER
 create index do_pid_idx on digital_object (pid(50));
+
+-- FIX INVALID DATES
+update item set item_date_from = '1989-04-30' where item_date_from = '1989-04-31';
