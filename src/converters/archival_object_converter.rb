@@ -241,7 +241,7 @@ class ArchivalObjectConverter < Converter
 
       record = super.merge({
                     'level' => find_level(object, item, item_classes, db),
-                    'subjects' => build_subjects(object, db),
+                    'subjects' => build_subjects(object, item_classes, db),
                     'instances' => build_instances(object, db),
                     'restrictions_apply' => item[:restrictions] > 1,
                     'notes' => build_notes(object, item, item_classes, db),
@@ -271,7 +271,7 @@ class ArchivalObjectConverter < Converter
       end
     end
 
-    def build_subjects(object, db)
+    def build_subjects(object, item_classes, db)
       # only items have these kinds of subjects
       subjects = []
 
@@ -281,6 +281,15 @@ class ArchivalObjectConverter < Converter
 
       db[:item_topic_term].where(:item => object[:id]).each do |row|
         subjects << { 'ref' => Migrator.promise('subject_uri', "topic_term:#{row[:term]}") }
+      end
+
+      [:bound_volume, :three_dimensional_object, :audio_visual_media, :document, :physical_image].each do |c|
+        if item_classes.has_key?(c)
+          item_classes[c].each do |class_object|
+            format = db[:format].where(:id => class_object[:format]).first
+            subjects << { 'ref' => Migrator.promise('subject_format', format[:name]) }
+          end
+        end
       end
 
       subjects
@@ -501,7 +510,7 @@ class ArchivalObjectConverter < Converter
       :container => 'mixed_materials', # ???
       :bound_volume => 'books',
       :three_dimensional_object => 'realia',
-      :audio_visual_media => 'audio', # or moving_images
+      :audio_visual_media => 'audio_or_moving_images',
       :document => 'text',
       :physical_image => 'graphic_materials',
       :digital_object => 'digital_object',
@@ -514,8 +523,8 @@ class ArchivalObjectConverter < Converter
       out = {}
 
       CLASS_INSTANCE.each_key do |cider_class|
+        out[cider_class] ||= []
         db[cider_class].where(:item => object[:id]).each do |class_object|
-          out[cider_class] ||= []
           out[cider_class].push(class_object)
         end
       end

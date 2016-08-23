@@ -28,7 +28,8 @@ class SubjectConverter < Converter
       :collection_subject => 'uniform_title',
       :geographic_term => 'geographic',
       :topic_term => 'topical',
-      :authority_name => 'uniform_title'
+      :authority_name => 'uniform_title',
+      :genre_form => 'genre_form'
     }
 
     TERM_FIELD = {
@@ -36,6 +37,7 @@ class SubjectConverter < Converter
       :geographic_term => :name,
       :topic_term => :name,
       :authority_name => :name,
+      :genre_form => :name
     }
 
     def build_terms(subjecty_thing, type)
@@ -74,6 +76,11 @@ class SubjectConverter < Converter
       db[type].each do |row|
         Subject.new.from_subjecty_thing(row, type, db, store)
       end
+    end
+
+    db[:format].sort{|a,b| a[:name] <=> b[:name] }.uniq{|f| f[:name] }.each do |format|
+      subject = Subject.new.from_subjecty_thing(format, :genre_form, db, store)
+      store.deliver_promise('subject_format', format[:name], subject.fetch('uri'))
     end
 
     # any authority name with '--' is a subject
