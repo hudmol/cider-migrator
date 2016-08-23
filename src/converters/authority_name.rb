@@ -24,6 +24,11 @@ class AuthorityName
       return false
     end
 
+    # Anything with (Organization) in it is a corporate entity
+    if name =~ /\(Organization\)/
+      return false
+    end
+
     # Anything with "author" in the name or notes is likely a person
     # (exceptions noted; make sure to limit to "author" or you'll accidentally
     # get "authority" as well, and those should stay corporate)
