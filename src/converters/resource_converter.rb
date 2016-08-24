@@ -337,7 +337,7 @@ class ResourceConverter < Converter
   def call(store)
     Log.info("Going to process #{db[:collection].count} resource records")
 
-    db[:collection].limit(10).each do |collection|
+    db[:collection].each do |collection|
       Resource.new.from_collection(collection, db, store)
     end
   end
