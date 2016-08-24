@@ -211,8 +211,55 @@ class DigitalObjectConverter < Converter
     dc_type_name.gsub(/(.)([A-Z])/,'\1_\2').downcase
   end
 
+  # Pulled from the CIDER `format` table and manually converted to extensions where applicable.
+  DIGITAL_OBJECT_FORMATS = {
+    2 => 'pdf',
+    3 => 'tiff',
+    7 => 'jpeg',
+    9 => 'image/tiff --photographic print',
+    11 => 'photographic print --image/tiff',
+    16 => 'tar',
+    20 => 'wav',
+    30 => 'iso',
+    32 => 'slide (photograph) --image/tiff',
+    33 => 'copy negative --image/tiff',
+    93 => 'photographic print',
+    96 => 'ppt',
+    99 => 'publication',
+    100 => 'application/pdf --publication',
+    108 => 'xml',
+    110 => 'jpeg',
+    201 => 'aiff',
+    203 => 'mpeg',
+    233 => 'photographic print --image/tiff --copy negative',
+    235 => 'photographic print --image/tiff --glass negative',
+    237 => 'glass negative --image/tiff',
+    240 => 'score',
+    247 => 'audio/x-cda',
+    248 => 'doc',
+    250 => 'wp',
+    268 => 'xls',
+    274 => 'mp3',
+    276 => 'mp4',
+    278 => 'tei',
+    279 => 'pdf',
+    283 => 'application/vnd.lotus-1-2-3',
+    284 => 'application/octet-stream',
+    286 => 'jpeg',
+    287 => 'gif',
+    288 => 'png',
+    289 => 'zip',
+    290 => 'bmp',
+    296 => 'book',
+    306 => 'csv',
+  }
+
   def extract_file_extension(object, item, digital_object, db)
-    if digital_object[:file_extension]
+    if digital_object[:format] && DIGITAL_OBJECT_FORMATS.has_key?(digital_object[:format])
+      Log.info('Hit the new digital object format lookup!  Hooray!')
+      DIGITAL_OBJECT_FORMATS.fetch(digital_object[:format])
+
+    elsif digital_object[:file_extension]
       # If there's a file extension set, we'll use that.
       ext = db[:file_extension][:id => digital_object[:file_extension]][:extension]
       # drop the leading '.' and '>' (some weird entries in the file_extension table...)
@@ -220,6 +267,7 @@ class DigitalObjectConverter < Converter
 
     elsif !digital_object[:original_filename].to_s.empty? && (ext = File.extname(digital_object[:original_filename].downcase))
       ext.sub(/^\./, "")
+
     else
       nil
     end
