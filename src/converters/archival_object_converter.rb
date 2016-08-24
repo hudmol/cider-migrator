@@ -112,6 +112,7 @@ class ArchivalObjectConverter < Converter
       record = super.merge({
         'level' => 'series',
         'notes' => build_notes(object, db),
+        'extents' => Extents.build_extents(object, db)
       })
 
       apply_restriction_fields(record, db)
