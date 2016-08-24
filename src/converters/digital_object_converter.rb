@@ -268,9 +268,42 @@ class DigitalObjectConverter < Converter
   def extract_dates(object, item, digital_object, db)
     dates = []
 
-    dates << Dates.enclosed_range(db, item[:id])
+    # TODO: Pulled this next block wholesale from
+    # archival_object_converter.rb#build_dates.  We probably want to refactor
+    # the duplication if we ever revisit this.
+    #
+    # add the item's dates as a creation single/inclusive date
+    # only from date so show as single
+    item_date_from = Utils.trim(item[:item_date_from])
+    item_date_to = Utils.trim(item[:item_date_to])
 
-    dates.compact
+    if item_date_from && item_date_to.nil?
+      dates << Dates.single(item[:item_date_from].strip).merge({
+                                                                 'label' => 'creation',
+                                                                 'date_type' => 'single',
+                                                                 'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                               })
+
+    # both dates so show as inclusive
+    elsif item_date_from && item_date_to
+      date_arr = [item_date_from, item_date_to].sort
+
+      if date_arr[0] != item_date_from
+        Log.warn("Item 'from' date is after 'to' date item #{item[:id]} (#{item_date_from} > #{item_date_to})")
+      end
+
+      dates << Dates.range(date_arr[0], date_arr[1], 'creation', 'inclusive').merge({
+                                                                                      'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                                    })
+
+    # only to date so show as inclusive
+    elsif item_date_to
+      dates << Dates.range(nil, item_date_to, 'creation', 'inclusive').merge({
+                                                                               'certainty' => item[:circa] == '1' ? 'approximate' : nil,
+                                                                             })
+    end
+
+    dates
   end
 
   def extract_user_defined(object, item, digital_object, db)
